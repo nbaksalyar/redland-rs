@@ -1,0 +1,10 @@
+[package]
+name = "redland-rs"
+version = "0.1.0"
+authors = ["MaidSafe Developers <dev@maidsafe.net>"]
+
+[dependencies]
+libc = "~0.2.44"
+
+[build-dependencies]
+bindgen = "0.43.2"
