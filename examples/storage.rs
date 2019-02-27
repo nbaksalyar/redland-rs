@@ -11,6 +11,13 @@ use libc::{c_char, c_uchar};
 use redland_rs::*;
 use std::ffi::CStr;
 use std::ptr;
+use std::slice;
+
+#[derive(Debug)]
+pub enum EntryAction {
+    Insert(Vec<u8>, Vec<u8>),
+    Delete(Vec<u8>)
+}
 
 extern crate libc;
 extern "C" {
@@ -2106,6 +2113,7 @@ unsafe extern "C" fn librdf_storage_hashes_context_remove_statement(
         return status;
     };
 }
+
 unsafe extern "C" fn librdf_storage_hashes_add_remove_statement(
     mut storage: *mut librdf_storage,
     mut statement: *mut librdf_statement,
@@ -2205,12 +2213,23 @@ unsafe extern "C" fn librdf_storage_hashes_add_remove_statement(
                         hd_value.data = (*context).value_buffer as *mut libc::c_void;
                         hd_value.size = value_len;
                         if 0 != is_addition {
+                            let ea = EntryAction::Insert(
+                                slice::from_raw_parts((*context).key_buffer, key_len as usize).to_vec(),
+                                slice::from_raw_parts((*context).value_buffer, value_len as usize).to_vec()
+                            );
+                            println!("{:?}", ea);
+
                             status = librdf_hash_put(
                                 *(*context).hashes.offset(i as isize),
                                 &mut hd_key,
                                 &mut hd_value,
                             )
                         } else {
+                            let ea = EntryAction::Delete(
+                                slice::from_raw_parts((*context).key_buffer, key_len as usize).to_vec(),
+                            );
+                            println!("{:?}", ea);
+
                             status = librdf_hash_delete(
                                 *(*context).hashes.offset(i as isize),
                                 &mut hd_key,
@@ -3746,9 +3765,13 @@ fn main() {
         let storage = librdf_new_storage(
             world.0,
             b"mdata\0" as *const _ as *const c_char,
-            ptr::null(),
-            ptr::null(),
+            b"mdata\0" as *const _ as *const c_char,
+            b"hash-type='memory'\0" as *const _ as *const c_char,
         );
+        if storage.is_null() {
+            eprintln!("Could not init storage");
+            return;
+        }
 
         let serializer = librdf_new_serializer(
             world.0,
