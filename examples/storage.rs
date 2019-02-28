@@ -3404,6 +3404,8 @@ unsafe extern "C" fn librdf_storage_hashes_terminate(mut storage: *mut librdf_st
         if !(*context).name.is_null() {
             free((*context).name as *mut libc::c_void);
         }
+        // Drop MData context
+        let _ = Box::from_raw((*context).mdata_context);
         free(context as *mut libc::c_void);
         return;
     };
