@@ -13,10 +13,14 @@ use std::ffi::CStr;
 use std::ptr;
 use std::slice;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum EntryAction {
     Insert(Vec<u8>, Vec<u8>),
     Delete(Vec<u8>),
+}
+
+pub struct MDataContext {
+    entry_actions: Vec<EntryAction>,
 }
 
 extern crate libc;
@@ -1178,6 +1182,7 @@ pub struct librdf_storage_s {
     pub index_contexts: libc::c_int,
     pub factory: *mut librdf_storage_factory_s,
 }
+
 /* *
  * librdf_storage_factory:
  *
@@ -1554,6 +1559,7 @@ pub const LIBRDF_STATEMENT_SUBJECT: librdf_statement_part = 1;
  * should be set in the #librdf_storage_factory init factory method.
  */
 pub type librdf_storage_instance = *mut libc::c_void;
+
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct librdf_storage_hashes_instance {
@@ -1580,6 +1586,7 @@ pub struct librdf_storage_hashes_instance {
     pub key_buffer_len: size_t,
     pub value_buffer: *mut libc::c_uchar,
     pub value_buffer_len: size_t,
+    pub mdata_context: *mut MDataContext,
 }
 /* -*- Mode: c; c-basic-offset: 2 -*-
  *
@@ -2198,6 +2205,13 @@ unsafe extern "C" fn librdf_storage_hashes_context_remove_statement(
     };
 }
 
+unsafe extern "C" fn get_entry_actions<'a>(mut storage: *mut librdf_storage) -> &'a [EntryAction] {
+    let mut context: *mut librdf_storage_hashes_instance =
+        (*storage).instance as *mut librdf_storage_hashes_instance;
+
+    &(*(*context).mdata_context).entry_actions
+}
+
 unsafe extern "C" fn librdf_storage_hashes_add_remove_statement(
     mut storage: *mut librdf_storage,
     mut statement: *mut librdf_statement,
@@ -2304,14 +2318,16 @@ unsafe extern "C" fn librdf_storage_hashes_add_remove_statement(
                         hd_key.size = key_len;
                         hd_value.data = (*context).value_buffer as *mut libc::c_void;
                         hd_value.size = value_len;
+
+                        let ea: EntryAction;
+
                         if 0 != is_addition {
-                            let ea = EntryAction::Insert(
+                            ea = EntryAction::Insert(
                                 slice::from_raw_parts((*context).key_buffer, key_len as usize)
                                     .to_vec(),
                                 slice::from_raw_parts((*context).value_buffer, value_len as usize)
                                     .to_vec(),
                             );
-                            println!("{:?}", ea);
 
                             status = librdf_hash_put(
                                 *(*context).hashes.offset(i as isize),
@@ -2319,11 +2335,10 @@ unsafe extern "C" fn librdf_storage_hashes_add_remove_statement(
                                 &mut hd_value,
                             )
                         } else {
-                            let ea = EntryAction::Delete(
+                            ea = EntryAction::Delete(
                                 slice::from_raw_parts((*context).key_buffer, key_len as usize)
                                     .to_vec(),
                             );
-                            println!("{:?}", ea);
 
                             status = librdf_hash_delete(
                                 *(*context).hashes.offset(i as isize),
@@ -2331,6 +2346,9 @@ unsafe extern "C" fn librdf_storage_hashes_add_remove_statement(
                                 &mut hd_value,
                             )
                         }
+
+                        (*(*context).mdata_context).entry_actions.push(ea);
+
                         if 0 != status {
                             break;
                         }
@@ -3479,6 +3497,10 @@ unsafe extern "C" fn librdf_storage_hashes_init_common(
     if context.is_null() {
         return 1i32;
     } else {
+        let mdata_context = Box::new(MDataContext {
+            entry_actions: Vec::new(),
+        });
+
         librdf_storage_set_instance(storage, context as librdf_storage_instance);
         (*context).name = name as *mut libc::c_char;
         (*context).hash_type = hash_type;
@@ -3488,6 +3510,7 @@ unsafe extern "C" fn librdf_storage_hashes_init_common(
         (*context).is_writable = is_writable;
         (*context).is_new = is_new;
         (*context).options = options;
+        (*context).mdata_context = Box::into_raw(mdata_context);
         /* Work out the number of hashes for allocating stuff below */
         hash_count = 3i32;
         index_contexts = librdf_hash_get_as_boolean(
@@ -3914,6 +3937,9 @@ fn main() {
             ptr::null(),
             0,
         );
+
+        let entry_actions = get_entry_actions(storage as *mut _);
+        println!("{:?}", entry_actions);
 
         let result =
             librdf_serializer_serialize_model_to_string(serializer, ptr::null_mut(), model.0);
