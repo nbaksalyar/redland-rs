@@ -16,7 +16,7 @@ use std::slice;
 #[derive(Debug)]
 pub enum EntryAction {
     Insert(Vec<u8>, Vec<u8>),
-    Delete(Vec<u8>)
+    Delete(Vec<u8>),
 }
 
 extern crate libc;
@@ -856,8 +856,10 @@ pub struct librdf_query_factory_s {
         Option<unsafe extern "C" fn(_: *mut librdf_query, _: *mut librdf_query) -> libc::c_int>,
     pub terminate: Option<unsafe extern "C" fn(_: *mut librdf_query) -> ()>,
     pub execute: Option<
-        unsafe extern "C" fn(_: *mut librdf_query, _: *mut librdf_model)
-            -> *mut librdf_query_results,
+        unsafe extern "C" fn(
+            _: *mut librdf_query,
+            _: *mut librdf_model,
+        ) -> *mut librdf_query_results,
     >,
     pub get_limit: Option<unsafe extern "C" fn(_: *mut librdf_query) -> libc::c_int>,
     pub set_limit:
@@ -885,8 +887,10 @@ pub struct librdf_query_factory_s {
         unsafe extern "C" fn(_: *mut librdf_query_results, _: libc::c_int) -> *const libc::c_char,
     >,
     pub results_get_binding_value_by_name: Option<
-        unsafe extern "C" fn(_: *mut librdf_query_results, _: *const libc::c_char)
-            -> *mut librdf_node,
+        unsafe extern "C" fn(
+            _: *mut librdf_query_results,
+            _: *const libc::c_char,
+        ) -> *mut librdf_node,
     >,
     pub results_get_bindings_count:
         Option<unsafe extern "C" fn(_: *mut librdf_query_results) -> libc::c_int>,
@@ -1007,8 +1011,11 @@ pub struct librdf_model_factory_s {
     pub init: Option<unsafe extern "C" fn() -> ()>,
     pub terminate: Option<unsafe extern "C" fn() -> ()>,
     pub create: Option<
-        unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_storage, _: *mut librdf_hash)
-            -> libc::c_int,
+        unsafe extern "C" fn(
+            _: *mut librdf_model,
+            _: *mut librdf_storage,
+            _: *mut librdf_hash,
+        ) -> libc::c_int,
     >,
     pub clone: Option<unsafe extern "C" fn(_: *mut librdf_model) -> *mut librdf_model>,
     pub destroy: Option<unsafe extern "C" fn(_: *mut librdf_model) -> ()>,
@@ -1022,12 +1029,18 @@ pub struct librdf_model_factory_s {
     pub contains_statement:
         Option<unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_statement) -> libc::c_int>,
     pub has_arc_in: Option<
-        unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_node, _: *mut librdf_node)
-            -> libc::c_int,
+        unsafe extern "C" fn(
+            _: *mut librdf_model,
+            _: *mut librdf_node,
+            _: *mut librdf_node,
+        ) -> libc::c_int,
     >,
     pub has_arc_out: Option<
-        unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_node, _: *mut librdf_node)
-            -> libc::c_int,
+        unsafe extern "C" fn(
+            _: *mut librdf_model,
+            _: *mut librdf_node,
+            _: *mut librdf_node,
+        ) -> libc::c_int,
     >,
     pub serialise: Option<unsafe extern "C" fn(_: *mut librdf_model) -> *mut librdf_stream>,
     pub find_statements: Option<
@@ -1042,16 +1055,25 @@ pub struct librdf_model_factory_s {
         ) -> *mut librdf_stream,
     >,
     pub get_sources: Option<
-        unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_node, _: *mut librdf_node)
-            -> *mut librdf_iterator,
+        unsafe extern "C" fn(
+            _: *mut librdf_model,
+            _: *mut librdf_node,
+            _: *mut librdf_node,
+        ) -> *mut librdf_iterator,
     >,
     pub get_arcs: Option<
-        unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_node, _: *mut librdf_node)
-            -> *mut librdf_iterator,
+        unsafe extern "C" fn(
+            _: *mut librdf_model,
+            _: *mut librdf_node,
+            _: *mut librdf_node,
+        ) -> *mut librdf_iterator,
     >,
     pub get_targets: Option<
-        unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_node, _: *mut librdf_node)
-            -> *mut librdf_iterator,
+        unsafe extern "C" fn(
+            _: *mut librdf_model,
+            _: *mut librdf_node,
+            _: *mut librdf_node,
+        ) -> *mut librdf_iterator,
     >,
     pub get_arcs_in: Option<
         unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_node) -> *mut librdf_iterator,
@@ -1060,38 +1082,55 @@ pub struct librdf_model_factory_s {
         unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_node) -> *mut librdf_iterator,
     >,
     pub context_add_statement: Option<
-        unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_node, _: *mut librdf_statement)
-            -> libc::c_int,
+        unsafe extern "C" fn(
+            _: *mut librdf_model,
+            _: *mut librdf_node,
+            _: *mut librdf_statement,
+        ) -> libc::c_int,
     >,
     pub context_remove_statement: Option<
-        unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_node, _: *mut librdf_statement)
-            -> libc::c_int,
+        unsafe extern "C" fn(
+            _: *mut librdf_model,
+            _: *mut librdf_node,
+            _: *mut librdf_statement,
+        ) -> libc::c_int,
     >,
     pub context_serialize: Option<
         unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_node) -> *mut librdf_stream,
     >,
     pub query_execute: Option<
-        unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_query)
-            -> *mut librdf_query_results,
+        unsafe extern "C" fn(
+            _: *mut librdf_model,
+            _: *mut librdf_query,
+        ) -> *mut librdf_query_results,
     >,
     pub sync: Option<unsafe extern "C" fn(_: *mut librdf_model) -> libc::c_int>,
     pub context_add_statements: Option<
-        unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_node, _: *mut librdf_stream)
-            -> libc::c_int,
+        unsafe extern "C" fn(
+            _: *mut librdf_model,
+            _: *mut librdf_node,
+            _: *mut librdf_stream,
+        ) -> libc::c_int,
     >,
     pub context_remove_statements:
         Option<unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_node) -> libc::c_int>,
     pub get_storage: Option<unsafe extern "C" fn(_: *mut librdf_model) -> *mut librdf_storage>,
     pub find_statements_in_context: Option<
-        unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_statement, _: *mut librdf_node)
-            -> *mut librdf_stream,
+        unsafe extern "C" fn(
+            _: *mut librdf_model,
+            _: *mut librdf_statement,
+            _: *mut librdf_node,
+        ) -> *mut librdf_stream,
     >,
     pub get_contexts: Option<unsafe extern "C" fn(_: *mut librdf_model) -> *mut librdf_iterator>,
     pub get_feature:
         Option<unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_uri) -> *mut librdf_node>,
     pub set_feature: Option<
-        unsafe extern "C" fn(_: *mut librdf_model, _: *mut librdf_uri, _: *mut librdf_node)
-            -> libc::c_int,
+        unsafe extern "C" fn(
+            _: *mut librdf_model,
+            _: *mut librdf_uri,
+            _: *mut librdf_node,
+        ) -> libc::c_int,
     >,
     pub transaction_start: Option<unsafe extern "C" fn(_: *mut librdf_model) -> libc::c_int>,
     pub transaction_start_with_handle:
@@ -1151,8 +1190,11 @@ pub struct librdf_storage_factory_s {
     pub name: *mut libc::c_char,
     pub label: *mut libc::c_char,
     pub init: Option<
-        unsafe extern "C" fn(_: *mut librdf_storage, _: *const libc::c_char, _: *mut librdf_hash)
-            -> libc::c_int,
+        unsafe extern "C" fn(
+            _: *mut librdf_storage,
+            _: *const libc::c_char,
+            _: *mut librdf_hash,
+        ) -> libc::c_int,
     >,
     pub clone:
         Option<unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_storage) -> libc::c_int>,
@@ -1173,17 +1215,25 @@ pub struct librdf_storage_factory_s {
         unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_statement) -> libc::c_int,
     >,
     pub has_arc_in: Option<
-        unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_node, _: *mut librdf_node)
-            -> libc::c_int,
+        unsafe extern "C" fn(
+            _: *mut librdf_storage,
+            _: *mut librdf_node,
+            _: *mut librdf_node,
+        ) -> libc::c_int,
     >,
     pub has_arc_out: Option<
-        unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_node, _: *mut librdf_node)
-            -> libc::c_int,
+        unsafe extern "C" fn(
+            _: *mut librdf_storage,
+            _: *mut librdf_node,
+            _: *mut librdf_node,
+        ) -> libc::c_int,
     >,
     pub serialise: Option<unsafe extern "C" fn(_: *mut librdf_storage) -> *mut librdf_stream>,
     pub find_statements: Option<
-        unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_statement)
-            -> *mut librdf_stream,
+        unsafe extern "C" fn(
+            _: *mut librdf_storage,
+            _: *mut librdf_statement,
+        ) -> *mut librdf_stream,
     >,
     pub find_statements_with_options: Option<
         unsafe extern "C" fn(
@@ -1194,16 +1244,25 @@ pub struct librdf_storage_factory_s {
         ) -> *mut librdf_stream,
     >,
     pub find_sources: Option<
-        unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_node, _: *mut librdf_node)
-            -> *mut librdf_iterator,
+        unsafe extern "C" fn(
+            _: *mut librdf_storage,
+            _: *mut librdf_node,
+            _: *mut librdf_node,
+        ) -> *mut librdf_iterator,
     >,
     pub find_arcs: Option<
-        unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_node, _: *mut librdf_node)
-            -> *mut librdf_iterator,
+        unsafe extern "C" fn(
+            _: *mut librdf_storage,
+            _: *mut librdf_node,
+            _: *mut librdf_node,
+        ) -> *mut librdf_iterator,
     >,
     pub find_targets: Option<
-        unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_node, _: *mut librdf_node)
-            -> *mut librdf_iterator,
+        unsafe extern "C" fn(
+            _: *mut librdf_storage,
+            _: *mut librdf_node,
+            _: *mut librdf_node,
+        ) -> *mut librdf_iterator,
     >,
     pub get_arcs_in: Option<
         unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_node) -> *mut librdf_iterator,
@@ -1212,34 +1271,49 @@ pub struct librdf_storage_factory_s {
         unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_node) -> *mut librdf_iterator,
     >,
     pub context_add_statement: Option<
-        unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_node, _: *mut librdf_statement)
-            -> libc::c_int,
+        unsafe extern "C" fn(
+            _: *mut librdf_storage,
+            _: *mut librdf_node,
+            _: *mut librdf_statement,
+        ) -> libc::c_int,
     >,
     pub context_remove_statement: Option<
-        unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_node, _: *mut librdf_statement)
-            -> libc::c_int,
+        unsafe extern "C" fn(
+            _: *mut librdf_storage,
+            _: *mut librdf_node,
+            _: *mut librdf_statement,
+        ) -> libc::c_int,
     >,
     pub context_serialise: Option<
         unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_node) -> *mut librdf_stream,
     >,
     pub sync: Option<unsafe extern "C" fn(_: *mut librdf_storage) -> libc::c_int>,
     pub context_add_statements: Option<
-        unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_node, _: *mut librdf_stream)
-            -> libc::c_int,
+        unsafe extern "C" fn(
+            _: *mut librdf_storage,
+            _: *mut librdf_node,
+            _: *mut librdf_stream,
+        ) -> libc::c_int,
     >,
     pub context_remove_statements:
         Option<unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_node) -> libc::c_int>,
     pub find_statements_in_context: Option<
-        unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_statement, _: *mut librdf_node)
-            -> *mut librdf_stream,
+        unsafe extern "C" fn(
+            _: *mut librdf_storage,
+            _: *mut librdf_statement,
+            _: *mut librdf_node,
+        ) -> *mut librdf_stream,
     >,
     pub get_contexts: Option<unsafe extern "C" fn(_: *mut librdf_storage) -> *mut librdf_iterator>,
     pub get_feature: Option<
         unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_uri) -> *mut librdf_node,
     >,
     pub set_feature: Option<
-        unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_uri, _: *mut librdf_node)
-            -> libc::c_int,
+        unsafe extern "C" fn(
+            _: *mut librdf_storage,
+            _: *mut librdf_uri,
+            _: *mut librdf_node,
+        ) -> libc::c_int,
     >,
     pub transaction_start: Option<unsafe extern "C" fn(_: *mut librdf_storage) -> libc::c_int>,
     pub transaction_start_with_handle:
@@ -1251,8 +1325,10 @@ pub struct librdf_storage_factory_s {
     pub supports_query:
         Option<unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_query) -> libc::c_int>,
     pub query_execute: Option<
-        unsafe extern "C" fn(_: *mut librdf_storage, _: *mut librdf_query)
-            -> *mut librdf_query_results,
+        unsafe extern "C" fn(
+            _: *mut librdf_storage,
+            _: *mut librdf_query,
+        ) -> *mut librdf_query_results,
     >,
 }
 /* *
@@ -1383,8 +1459,11 @@ pub type librdf_log_func =
  * Return value: non-zero to indicate log message has been handled
  */
 pub type librdf_log_level_func = Option<
-    unsafe extern "C" fn(_: *mut libc::c_void, _: *const libc::c_char, _: *mut __va_list_tag)
-        -> libc::c_int,
+    unsafe extern "C" fn(
+        _: *mut libc::c_void,
+        _: *const libc::c_char,
+        _: *mut __va_list_tag,
+    ) -> libc::c_int,
 >;
 pub type librdf_storage_factory = librdf_storage_factory_s;
 /* *
@@ -1614,8 +1693,11 @@ pub type librdf_stream_map_free_context_handler =
  * Returns: item in keep the iteration or NULL to remove it
  */
 pub type librdf_stream_map_handler = Option<
-    unsafe extern "C" fn(_: *mut librdf_stream, _: *mut libc::c_void, _: *mut librdf_statement)
-        -> *mut librdf_statement,
+    unsafe extern "C" fn(
+        _: *mut librdf_stream,
+        _: *mut libc::c_void,
+        _: *mut librdf_statement,
+    ) -> *mut librdf_statement,
 >;
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -1705,10 +1787,12 @@ unsafe extern "C" fn librdf_storage_hashes_get_feature(
         uri_string = librdf_uri_as_string(feature);
         if uri_string.is_null() {
             return 0 as *mut librdf_node;
-        } else if 0 == strcmp(
-            uri_string as *const libc::c_char,
-            b"http://feature.librdf.org/model-contexts\x00" as *const u8 as *const libc::c_char,
-        ) {
+        } else if 0
+            == strcmp(
+                uri_string as *const libc::c_char,
+                b"http://feature.librdf.org/model-contexts\x00" as *const u8 as *const libc::c_char,
+            )
+        {
             let mut value: [libc::c_uchar; 2] = [0; 2];
             sprintf(
                 value.as_mut_ptr() as *mut libc::c_char,
@@ -2156,21 +2240,25 @@ unsafe extern "C" fn librdf_storage_hashes_add_remove_statement(
             );
             if 0 == key_len {
                 return 1i32;
-            } else if 0 != librdf_storage_hashes_grow_buffer(
-                &mut (*context).key_buffer,
-                &mut (*context).key_buffer_len,
-                key_len,
-            ) {
+            } else if 0
+                != librdf_storage_hashes_grow_buffer(
+                    &mut (*context).key_buffer,
+                    &mut (*context).key_buffer_len,
+                    key_len,
+                )
+            {
                 status = 1i32;
                 break;
-            } else if 0 == librdf_statement_encode_parts2(
-                world,
-                statement,
-                0 as *mut librdf_node,
-                (*context).key_buffer,
-                (*context).key_buffer_len,
-                fields,
-            ) {
+            } else if 0
+                == librdf_statement_encode_parts2(
+                    world,
+                    statement,
+                    0 as *mut librdf_node,
+                    (*context).key_buffer,
+                    (*context).key_buffer_len,
+                    fields,
+                )
+            {
                 status = 1i32;
                 break;
             } else {
@@ -2189,21 +2277,25 @@ unsafe extern "C" fn librdf_storage_hashes_add_remove_statement(
                     if 0 == value_len {
                         status = 1i32;
                         break;
-                    } else if 0 != librdf_storage_hashes_grow_buffer(
-                        &mut (*context).value_buffer,
-                        &mut (*context).value_buffer_len,
-                        value_len,
-                    ) {
+                    } else if 0
+                        != librdf_storage_hashes_grow_buffer(
+                            &mut (*context).value_buffer,
+                            &mut (*context).value_buffer_len,
+                            value_len,
+                        )
+                    {
                         status = 1i32;
                         break;
-                    } else if 0 == librdf_statement_encode_parts2(
-                        world,
-                        statement,
-                        context_node,
-                        (*context).value_buffer,
-                        (*context).value_buffer_len,
-                        fields,
-                    ) {
+                    } else if 0
+                        == librdf_statement_encode_parts2(
+                            world,
+                            statement,
+                            context_node,
+                            (*context).value_buffer,
+                            (*context).value_buffer_len,
+                            fields,
+                        )
+                    {
                         status = 1i32;
                         break;
                     } else {
@@ -2214,8 +2306,10 @@ unsafe extern "C" fn librdf_storage_hashes_add_remove_statement(
                         hd_value.size = value_len;
                         if 0 != is_addition {
                             let ea = EntryAction::Insert(
-                                slice::from_raw_parts((*context).key_buffer, key_len as usize).to_vec(),
-                                slice::from_raw_parts((*context).value_buffer, value_len as usize).to_vec()
+                                slice::from_raw_parts((*context).key_buffer, key_len as usize)
+                                    .to_vec(),
+                                slice::from_raw_parts((*context).value_buffer, value_len as usize)
+                                    .to_vec(),
                             );
                             println!("{:?}", ea);
 
@@ -2226,7 +2320,8 @@ unsafe extern "C" fn librdf_storage_hashes_add_remove_statement(
                             )
                         } else {
                             let ea = EntryAction::Delete(
-                                slice::from_raw_parts((*context).key_buffer, key_len as usize).to_vec(),
+                                slice::from_raw_parts((*context).key_buffer, key_len as usize)
+                                    .to_vec(),
                             );
                             println!("{:?}", ea);
 
@@ -2598,13 +2693,15 @@ unsafe extern "C" fn librdf_storage_hashes_node_iterator_get_method(
         value = librdf_iterator_get_value((*context).iterator) as *mut librdf_hash_datum;
         if value.is_null() {
             return 0 as *mut libc::c_void;
-        } else if 0 == librdf_statement_decode2(
-            world,
-            &mut (*context).statement,
-            0 as *mut *mut librdf_node,
-            (*value).data as *mut libc::c_uchar,
-            (*value).size,
-        ) {
+        } else if 0
+            == librdf_statement_decode2(
+                world,
+                &mut (*context).statement,
+                0 as *mut *mut librdf_node,
+                (*value).data as *mut libc::c_uchar,
+                (*value).size,
+            )
+        {
             return 0 as *mut libc::c_void;
         } else {
             match (*context).want {
@@ -3017,14 +3114,16 @@ unsafe extern "C" fn librdf_storage_hashes_contains_statement(
             key_buffer = malloc(key_len) as *mut libc::c_uchar;
             if key_buffer.is_null() {
                 return 1i32;
-            } else if 0 == librdf_statement_encode_parts2(
-                world,
-                statement,
-                0 as *mut librdf_node,
-                key_buffer,
-                key_len,
-                fields,
-            ) {
+            } else if 0
+                == librdf_statement_encode_parts2(
+                    world,
+                    statement,
+                    0 as *mut librdf_node,
+                    key_buffer,
+                    key_len,
+                    fields,
+                )
+            {
                 free(key_buffer as *mut libc::c_void);
                 return 1i32;
             } else {
@@ -3047,14 +3146,16 @@ unsafe extern "C" fn librdf_storage_hashes_contains_statement(
                     if value_buffer.is_null() {
                         free(key_buffer as *mut libc::c_void);
                         return 1i32;
-                    } else if 0 == librdf_statement_encode_parts2(
-                        world,
-                        statement,
-                        0 as *mut librdf_node,
-                        value_buffer,
-                        value_len,
-                        fields,
-                    ) {
+                    } else if 0
+                        == librdf_statement_encode_parts2(
+                            world,
+                            statement,
+                            0 as *mut librdf_node,
+                            value_buffer,
+                            value_len,
+                            fields,
+                        )
+                    {
                         free(key_buffer as *mut libc::c_void);
                         free(value_buffer as *mut libc::c_void);
                         return 1i32;
@@ -3160,14 +3261,16 @@ unsafe extern "C" fn librdf_storage_hashes_open(
     i = 0i32;
     while i < (*context).hash_count {
         let mut hash: *mut librdf_hash = *(*context).hashes.offset(i as isize);
-        if hash.is_null() || 0 != librdf_hash_open(
-            hash,
-            *(*context).names.offset(i as isize),
-            (*context).mode,
-            (*context).is_writable,
-            (*context).is_new,
-            (*context).options,
-        ) {
+        if hash.is_null()
+            || 0 != librdf_hash_open(
+                hash,
+                *(*context).names.offset(i as isize),
+                (*context).mode,
+                (*context).is_writable,
+                (*context).is_new,
+                (*context).options,
+            )
+        {
             /* I still have my "Structured Fortran" book */
             let mut j: libc::c_int = 0;
             j = 0i32;
@@ -3310,17 +3413,19 @@ unsafe extern "C" fn librdf_storage_hashes_clone(
                                 match current_block {
                                     17690084694202169520 => {}
                                     _ => {
-                                        if !(0 != librdf_storage_hashes_init_common(
-                                            new_storage,
-                                            new_name,
-                                            new_hash_type,
-                                            new_db_dir,
-                                            new_indexes,
-                                            (*old_context).mode,
-                                            (*old_context).is_writable,
-                                            (*old_context).is_new,
-                                            new_options,
-                                        )) {
+                                        if !(0
+                                            != librdf_storage_hashes_init_common(
+                                                new_storage,
+                                                new_name,
+                                                new_hash_type,
+                                                new_db_dir,
+                                                new_indexes,
+                                                (*old_context).mode,
+                                                (*old_context).is_writable,
+                                                (*old_context).is_new,
+                                                new_options,
+                                            ))
+                                        {
                                             return 0i32;
                                         }
                                     }
