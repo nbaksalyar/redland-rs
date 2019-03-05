@@ -13,6 +13,8 @@ extern crate redland_rs;
 use libc::{c_char, c_uchar};
 use redland_rs::*;
 use std::ffi::CStr;
+use std::fs::File;
+use std::io::prelude::*;
 use std::ptr;
 use std::slice;
 
@@ -20,8 +22,8 @@ use bincode::{deserialize, serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EntryAction {
-    Insert(Vec<u8>, Vec<u8>),
-    Delete(Vec<u8>),
+    Insert(i32, Vec<u8>, Vec<u8>),
+    Delete(i32, Vec<u8>),
 }
 
 pub struct MDataContext {
@@ -2328,6 +2330,7 @@ unsafe extern "C" fn librdf_storage_hashes_add_remove_statement(
 
                         if 0 != is_addition {
                             ea = EntryAction::Insert(
+                                i,
                                 slice::from_raw_parts((*context).key_buffer, key_len as usize)
                                     .to_vec(),
                                 slice::from_raw_parts((*context).value_buffer, value_len as usize)
@@ -2341,6 +2344,7 @@ unsafe extern "C" fn librdf_storage_hashes_add_remove_statement(
                             )
                         } else {
                             ea = EntryAction::Delete(
+                                i,
                                 slice::from_raw_parts((*context).key_buffer, key_len as usize)
                                     .to_vec(),
                             );
@@ -2394,16 +2398,16 @@ unsafe extern "C" fn librdf_storage_hashes_context_add_statement(
         (*storage).instance as *mut librdf_storage_hashes_instance;
     /* on stack - not allocated */
     let mut key: librdf_hash_datum = librdf_hash_datum_s {
-        world: 0 as *mut librdf_world,
-        data: 0 as *mut libc::c_void,
+        world: ptr::null_mut(),
+        data: ptr::null_mut(),
         size: 0,
-        next: 0 as *mut librdf_hash_datum_s,
+        next: ptr::null_mut(),
     };
     let mut value: librdf_hash_datum = librdf_hash_datum_s {
-        world: 0 as *mut librdf_world,
-        data: 0 as *mut libc::c_void,
+        world: ptr::null_mut(),
+        data: ptr::null_mut(),
         size: 0,
-        next: 0 as *mut librdf_hash_datum_s,
+        next: ptr::null_mut(),
     };
     let mut size: size_t = 0;
     let mut status: libc::c_int = 0;
@@ -2418,27 +2422,24 @@ unsafe extern "C" fn librdf_storage_hashes_context_add_statement(
             b"Storage was created without context support\x00" as *const u8 as *const libc::c_char,
         );
         return 1i32;
-    } else if 0
-        != librdf_storage_hashes_add_remove_statement(storage, statement, context_node, 1i32)
-    {
+    }
+    if 0 != librdf_storage_hashes_add_remove_statement(storage, statement, context_node, 1i32) {
         return 1i32;
-    } else {
-        size = librdf_node_encode(context_node, 0 as *mut libc::c_uchar, 0i32 as size_t);
-        key.data = malloc(size) as *mut libc::c_char as *mut libc::c_void;
-        key.size = librdf_node_encode(context_node, key.data as *mut libc::c_uchar, size);
-        size = librdf_statement_encode2(world, statement, 0 as *mut libc::c_uchar, 0i32 as size_t);
-        value.data = malloc(size) as *mut libc::c_char as *mut libc::c_void;
-        value.size =
-            librdf_statement_encode2(world, statement, value.data as *mut libc::c_uchar, size);
-        status = librdf_hash_put(
-            *(*context).hashes.offset((*context).contexts_index as isize),
-            &mut key,
-            &mut value,
-        );
-        free(key.data);
-        free(value.data);
-        return status;
-    };
+    }
+    size = librdf_node_encode(context_node, 0 as *mut libc::c_uchar, 0i32 as size_t);
+    key.data = malloc(size) as *mut libc::c_char as *mut libc::c_void;
+    key.size = librdf_node_encode(context_node, key.data as *mut libc::c_uchar, size);
+    size = librdf_statement_encode2(world, statement, 0 as *mut libc::c_uchar, 0i32 as size_t);
+    value.data = malloc(size) as *mut libc::c_char as *mut libc::c_void;
+    value.size = librdf_statement_encode2(world, statement, value.data as *mut libc::c_uchar, size);
+    status = librdf_hash_put(
+        *(*context).hashes.offset((*context).contexts_index as isize),
+        &mut key,
+        &mut value,
+    );
+    free(key.data);
+    free(value.data);
+    return status;
 }
 unsafe extern "C" fn librdf_storage_hashes_find_targets(
     mut storage: *mut librdf_storage,
@@ -3273,6 +3274,45 @@ unsafe extern "C" fn librdf_storage_hashes_close(mut storage: *mut librdf_storag
     }
     return 0i32;
 }
+unsafe extern "C" fn librdf_storage_hashes_copy_from_kv(
+    mut storage: *mut librdf_storage,
+    eas: &mut [EntryAction],
+) {
+    let mut context: *mut librdf_storage_hashes_instance =
+        (*storage).instance as *mut librdf_storage_hashes_instance;
+
+    let mut hd_key: librdf_hash_datum = librdf_hash_datum_s {
+        world: ptr::null_mut(),
+        data: ptr::null_mut(),
+        size: 0,
+        next: ptr::null_mut(),
+    };
+    let mut hd_value: librdf_hash_datum = librdf_hash_datum_s {
+        world: ptr::null_mut(),
+        data: ptr::null_mut(),
+        size: 0,
+        next: ptr::null_mut(),
+    };
+
+    for action in eas {
+        match action {
+            EntryAction::Insert(ref i, ref mut key, ref mut value) => {
+                hd_key.data = key.as_mut_ptr() as *mut _;
+                hd_key.size = key.len() as u64;
+
+                hd_value.data = value.as_mut_ptr() as *mut _;
+                hd_value.size = value.len() as u64;
+
+                let status = librdf_hash_put(
+                    *(*context).hashes.offset(*i as isize),
+                    &mut hd_key,
+                    &mut hd_value,
+                );
+            }
+            EntryAction::Delete(_i, _key) => {}
+        }
+    }
+}
 unsafe extern "C" fn librdf_storage_hashes_open(
     mut storage: *mut librdf_storage,
     mut model: *mut librdf_model,
@@ -3945,19 +3985,36 @@ fn main() {
             return;
         }
 
+        // Load entries from a file
+        let mut entry_actions: Vec<EntryAction> = {
+            let mut file = File::open("md-storage").unwrap();
+            let mut contents = Vec::new();
+            file.read_to_end(&mut contents).unwrap();
+
+            deserialize(&contents).unwrap()
+        };
+        println!("{:?}", entry_actions);
+
+        librdf_storage_hashes_copy_from_kv(storage as *mut _, &mut entry_actions);
+
+        let model = Model(librdf_new_model(world.0, storage, ptr::null()));
+
+        /*
+        // Convert entries into a hash
         let model = create_mock_model(&world, storage);
 
+        // Create mock entries and write to a file
+        let model = create_mock_model(&world, storage);
         let entry_actions = get_entry_actions(storage as *mut _);
         println!("{:?}", entry_actions);
 
         let ser = serialize(entry_actions).unwrap();
 
         {
-            use std::fs::File;
-            use std::io::prelude::*;
             let mut file = File::create("md-storage").unwrap();
             file.write_all(&ser).unwrap();
         }
+         */
 
         // Serialise to string - Turtle
         let serializer = Serializer(librdf_new_serializer(
