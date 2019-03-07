@@ -14,7 +14,6 @@ extern crate redland_rs;
 use libc::{c_char, c_uchar};
 use redland_rs::*;
 use redland_rs::kv_storage::*;
-use std::ffi::CStr;
 use std::fs::File;
 use std::io::prelude::*;
 use std::ptr;
@@ -37,7 +36,7 @@ unsafe fn create_mock_model(world: &World, storage: &KvStorage) -> Model {
         b"location\0" as *const _ as *const c_uchar,
     );
 
-    let model = Model(librdf_new_model(world.0, storage.as_mut_ptr(), ptr::null()));
+    let model = Model(librdf_new_model(world.as_mut_ptr(), storage.as_mut_ptr(), ptr::null()));
     librdf_model_add_string_literal_statement(
         model.0,
         subject,
@@ -82,31 +81,21 @@ fn main() {
 
         storage.copy_entries(&mut entry_actions);
 
-        let model = Model(librdf_new_model(world.0, storage.as_mut_ptr(), ptr::null()));
+        let model = Model(librdf_new_model(world.as_mut_ptr(), storage.as_mut_ptr(), ptr::null()));
 
         // Serialise to string - Turtle
         let serializer = Serializer(librdf_new_serializer(
-            world.0,
+            world.as_mut_ptr(),
             b"turtle\0" as *const _ as *const c_char,
             ptr::null(),
             ptr::null_mut(),
         ));
         let ms_schema = librdf_new_uri(
-            world.0,
+            world.as_mut_ptr(),
             b"http://maidsafe.net/\0" as *const _ as *const c_uchar,
         );
-        librdf_serializer_set_namespace(
-            serializer.0,
-            ms_schema,
-            b"ms\0" as *const _ as *const c_char,
-        );
+        serializer.set_namespace(ms_schema, "ms").unwrap();
 
-        let result =
-            librdf_serializer_serialize_model_to_string(serializer.0, ptr::null_mut(), model.0);
-        println!(
-            "{}",
-            CStr::from_ptr(result as *const c_char).to_str().unwrap()
-        );
-        librdf_free_memory(result as *mut _);
+        println!("{}", serializer.serialize_model_to_string(&model).unwrap());
     }
 }
