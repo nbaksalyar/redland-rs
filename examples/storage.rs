@@ -21,23 +21,23 @@ use std::ptr;
 
 use bincode::{deserialize, serialize};
 
-unsafe fn create_mock_model(world: &World, storage: *mut redland_rs::librdf_storage) -> Model {
+unsafe fn create_mock_model(world: &World, storage: &KvStorage) -> Model {
     let ms_schema = librdf_new_uri(
-        world.0,
+        world.as_mut_ptr(),
         b"http://maidsafe.net/\0" as *const _ as *const c_uchar,
     );
     let subject = librdf_new_node_from_uri_local_name(
-        world.0,
+        world.as_mut_ptr(),
         ms_schema,
         b"MaidSafe\0" as *const _ as *const c_uchar,
     );
     let predicate = librdf_new_node_from_uri_local_name(
-        world.0,
+        world.as_mut_ptr(),
         ms_schema,
         b"location\0" as *const _ as *const c_uchar,
     );
 
-    let model = Model(librdf_new_model(world.0, storage, ptr::null()));
+    let model = Model(librdf_new_model(world.0, storage.as_mut_ptr(), ptr::null()));
     librdf_model_add_string_literal_statement(
         model.0,
         subject,
@@ -52,26 +52,14 @@ unsafe fn create_mock_model(world: &World, storage: *mut redland_rs::librdf_stor
 
 fn main() {
     unsafe {
-        let world = World(librdf_new_world());
-
-        librdf_init_storage_hashes(world.0);
-
-        let storage = librdf_new_storage(
-            world.0,
-            b"mdata\0" as *const _ as *const c_char,
-            b"mdata\0" as *const _ as *const c_char,
-            b"hash-type='memory'\0" as *const _ as *const c_char,
-        );
-        if storage.is_null() {
-            eprintln!("Could not init storage");
-            return;
-        }
+        let world = World::new();
+        let mut storage = KvStorage::new(&world).unwrap();
 
         // Convert entries into a hash
         {
             // Create mock entries and write to a file
-            let _model = create_mock_model(&world, storage);
-            let entry_actions = get_entry_actions(storage as *mut _);
+            let _model = create_mock_model(&world, &storage);
+            let entry_actions = storage.entry_actions();
             println!("{:?}", entry_actions);
 
             let ser = serialize(entry_actions).unwrap();
@@ -92,9 +80,9 @@ fn main() {
         };
         println!("{:?}", entry_actions);
 
-        librdf_storage_hashes_copy_from_kv(storage as *mut _, &mut entry_actions);
+        storage.copy_entries(&mut entry_actions);
 
-        let model = Model(librdf_new_model(world.0, storage, ptr::null()));
+        let model = Model(librdf_new_model(world.0, storage.as_mut_ptr(), ptr::null()));
 
         // Serialise to string - Turtle
         let serializer = Serializer(librdf_new_serializer(
@@ -120,7 +108,5 @@ fn main() {
             CStr::from_ptr(result as *const c_char).to_str().unwrap()
         );
         librdf_free_memory(result as *mut _);
-
-        librdf_free_storage(storage);
     }
 }

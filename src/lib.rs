@@ -14,6 +14,18 @@ pub mod kv_storage;
 
 pub struct World(pub *mut librdf_world);
 
+impl World {
+    pub fn new() -> Self {
+        World(unsafe {
+            librdf_new_world()
+        })
+    }
+
+    pub fn as_mut_ptr(&self) -> *mut librdf_world {
+        self.0
+    }
+}
+
 impl Drop for World {
     fn drop(&mut self) {
         unsafe {

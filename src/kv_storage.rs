@@ -1,9 +1,83 @@
 //! Redland storage implementation based on key/value representation.
 //! Converted from C code into Rust using C2Rust.
 
-use crate::*;
+use libc::c_char;
 use std::ptr;
 use std::slice;
+use crate::*;
+
+pub struct KvStorage(*mut self::librdf_storage);
+
+impl KvStorage {
+    pub fn new(world: &World) -> Result<Self, i32> {
+        unsafe {
+            librdf_init_storage_hashes(world.as_mut_ptr());
+        }
+
+        let storage = unsafe {
+            librdf_new_storage(
+                world.as_mut_ptr(),
+                b"mdata\0" as *const _ as *const c_char,
+                b"mdata\0" as *const _ as *const c_char,
+                b"hash-type='memory'\0" as *const _ as *const c_char,
+            )
+        };
+
+        if storage.is_null() {
+            return Err(-1);
+        }
+
+        Ok(KvStorage(storage as *mut _))
+    }
+
+    pub fn entry_actions<'a>(&self) -> &'a [EntryAction] {
+        unsafe {
+            let context: *mut librdf_storage_hashes_instance =
+                (*self.0).instance as *mut librdf_storage_hashes_instance;
+
+            &(*(*context).mdata_context).entry_actions
+        }
+    }
+
+    pub fn copy_entries(&mut self, eas: &mut [EntryAction]) {
+        unsafe {
+            let context: *mut librdf_storage_hashes_instance =
+                (*self.0).instance as *mut librdf_storage_hashes_instance;
+
+            let mut hd_key: librdf_hash_datum = Default::default();
+            let mut hd_value: librdf_hash_datum = Default::default();
+
+            for action in eas {
+                match action {
+                    EntryAction::Insert(ref i, ref mut key, ref mut value) => {
+                        hd_key.data = key.as_mut_ptr() as *mut _;
+                        hd_key.size = key.len() as u64;
+
+                        hd_value.data = value.as_mut_ptr() as *mut _;
+                        hd_value.size = value.len() as u64;
+
+                        let _status = librdf_hash_put(
+                            *(*context).hashes.offset(*i as isize),
+                            &mut hd_key,
+                            &mut hd_value,
+                        );
+                    }
+                    EntryAction::Delete(_i, _key) => {}
+                }
+            }
+        }
+    }
+
+    pub fn as_mut_ptr(&self) -> *mut super::librdf_storage {
+        self.0 as *mut _
+    }
+}
+
+impl Drop for KvStorage {
+    fn drop(&mut self) {
+        unsafe { librdf_free_storage(self.0 as *mut _) }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EntryAction {
@@ -796,6 +870,18 @@ pub struct librdf_hash_datum_s {
     pub size: size_t,
     pub next: *mut librdf_hash_datum_s,
 }
+
+impl Default for librdf_hash_datum_s {
+    fn default() -> Self {
+        librdf_hash_datum_s {
+            world: ptr::null_mut(),
+            data: ptr::null_mut(),
+            size: 0,
+            next: ptr::null_mut()
+        }
+    }
+}
+
 pub type librdf_world = librdf_world_s;
 /* *
  * librdf_node:
@@ -2196,13 +2282,6 @@ unsafe extern "C" fn librdf_storage_hashes_context_remove_statement(
     };
 }
 
-pub unsafe extern "C" fn get_entry_actions<'a>(storage: *mut librdf_storage) -> &'a [EntryAction] {
-    let context: *mut librdf_storage_hashes_instance =
-        (*storage).instance as *mut librdf_storage_hashes_instance;
-
-    &(*(*context).mdata_context).entry_actions
-}
-
 unsafe extern "C" fn librdf_storage_hashes_add_remove_statement(
     storage: *mut librdf_storage,
     statement: *mut librdf_statement,
@@ -3259,46 +3338,6 @@ unsafe extern "C" fn librdf_storage_hashes_close(storage: *mut librdf_storage) -
     return 0i32;
 }
 
-pub unsafe extern "C" fn librdf_storage_hashes_copy_from_kv(
-    storage: *mut librdf_storage,
-    eas: &mut [EntryAction],
-) {
-    let context: *mut librdf_storage_hashes_instance =
-        (*storage).instance as *mut librdf_storage_hashes_instance;
-
-    let mut hd_key: librdf_hash_datum = librdf_hash_datum_s {
-        world: ptr::null_mut(),
-        data: ptr::null_mut(),
-        size: 0,
-        next: ptr::null_mut(),
-    };
-    let mut hd_value: librdf_hash_datum = librdf_hash_datum_s {
-        world: ptr::null_mut(),
-        data: ptr::null_mut(),
-        size: 0,
-        next: ptr::null_mut(),
-    };
-
-    for action in eas {
-        match action {
-            EntryAction::Insert(ref i, ref mut key, ref mut value) => {
-                hd_key.data = key.as_mut_ptr() as *mut _;
-                hd_key.size = key.len() as u64;
-
-                hd_value.data = value.as_mut_ptr() as *mut _;
-                hd_value.size = value.len() as u64;
-
-                let _status = librdf_hash_put(
-                    *(*context).hashes.offset(*i as isize),
-                    &mut hd_key,
-                    &mut hd_value,
-                );
-            }
-            EntryAction::Delete(_i, _key) => {}
-        }
-    }
-}
-
 unsafe extern "C" fn librdf_storage_hashes_open(
     storage: *mut librdf_storage,
     _model: *mut librdf_model,
@@ -3835,9 +3874,9 @@ unsafe extern "C" fn librdf_storage_hashes_init(
     let mut hash_type: *mut libc::c_char = 0 as *mut libc::c_char;
     let mut db_dir: *mut libc::c_char = 0 as *mut libc::c_char;
     let mut indexes: *mut libc::c_char = 0 as *mut libc::c_char;
-    let mut mode: libc::c_int = 0;
-    let mut is_writable: libc::c_int = 0;
-    let mut is_new: libc::c_int = 0;
+    let mut mode: libc::c_int;
+    let mut is_writable: libc::c_int;
+    let mut is_new: libc::c_int;
     let mut name_copy: *mut libc::c_char = 0 as *mut libc::c_char;
     if options.is_null() {
         return 1i32;
