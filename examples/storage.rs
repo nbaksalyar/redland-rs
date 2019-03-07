@@ -7,13 +7,13 @@
     unused_mut
 )]
 
-extern crate libc;
 extern crate bincode;
+extern crate libc;
 extern crate redland_rs;
 
 use libc::{c_char, c_uchar};
-use redland_rs::*;
 use redland_rs::kv_storage::*;
+use redland_rs::*;
 use std::fs::File;
 use std::io::prelude::*;
 use std::ptr;
@@ -36,7 +36,11 @@ unsafe fn create_mock_model(world: &World, storage: &KvStorage) -> Model {
         b"location\0" as *const _ as *const c_uchar,
     );
 
-    let model = Model(librdf_new_model(world.as_mut_ptr(), storage.as_mut_ptr(), ptr::null()));
+    let model = Model(librdf_new_model(
+        world.as_mut_ptr(),
+        storage.as_mut_ptr(),
+        ptr::null(),
+    ));
     librdf_model_add_string_literal_statement(
         model.0,
         subject,
@@ -81,7 +85,11 @@ fn main() {
 
         storage.copy_entries(&mut entry_actions);
 
-        let model = Model(librdf_new_model(world.as_mut_ptr(), storage.as_mut_ptr(), ptr::null()));
+        let model = Model(librdf_new_model(
+            world.as_mut_ptr(),
+            storage.as_mut_ptr(),
+            ptr::null(),
+        ));
 
         // Serialise to string - Turtle
         let serializer = Serializer(librdf_new_serializer(

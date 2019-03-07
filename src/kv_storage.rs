@@ -1,10 +1,10 @@
 //! Redland storage implementation based on key/value representation.
 //! Converted from C code into Rust using C2Rust.
 
+use crate::*;
 use libc::c_char;
 use std::ptr;
 use std::slice;
-use crate::*;
 
 pub struct KvStorage(*mut self::librdf_storage);
 
@@ -877,7 +877,7 @@ impl Default for librdf_hash_datum_s {
             world: ptr::null_mut(),
             data: ptr::null_mut(),
             size: 0,
-            next: ptr::null_mut()
+            next: ptr::null_mut(),
         }
     }
 }
@@ -1807,9 +1807,7 @@ pub unsafe extern "C" fn librdf_init_storage_hashes(world: *mut librdf_world) {
         Some(librdf_storage_hashes_register_factory),
     );
 }
-unsafe extern "C" fn librdf_storage_hashes_register_factory(
-    factory: *mut librdf_storage_factory,
-) {
+unsafe extern "C" fn librdf_storage_hashes_register_factory(factory: *mut librdf_storage_factory) {
     if 0 != strcmp(
         (*factory).name,
         b"mdata\x00" as *const u8 as *const libc::c_char,
@@ -2130,9 +2128,7 @@ unsafe extern "C" fn librdf_storage_hashes_context_serialise(
         }
     };
 }
-unsafe extern "C" fn librdf_storage_hashes_context_serialise_finished(
-    context: *mut libc::c_void,
-) {
+unsafe extern "C" fn librdf_storage_hashes_context_serialise_finished(context: *mut libc::c_void) {
     let scontext: *mut librdf_storage_hashes_context_serialise_stream_context =
         context as *mut librdf_storage_hashes_context_serialise_stream_context;
     if !(*scontext).context_node.is_null() {
@@ -3172,8 +3168,7 @@ unsafe extern "C" fn librdf_storage_hashes_contains_statement(
          * since a statement is encoded in KEY/VALUE and the VALUE may
          * contain some context node.
          */
-        let stream: *mut librdf_stream =
-            librdf_storage_hashes_find_statements(storage, statement);
+        let stream: *mut librdf_stream = librdf_storage_hashes_find_statements(storage, statement);
         if stream.is_null() {
             return 0i32;
         } else {

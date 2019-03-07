@@ -12,16 +12,17 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 pub mod kv_storage;
 
-use std::{ptr, ffi::{CStr, CString}};
 use libc::c_char;
+use std::{
+    ffi::{CStr, CString},
+    ptr,
+};
 
 pub struct World(*mut librdf_world);
 
 impl World {
     pub fn new() -> Self {
-        World(unsafe {
-            librdf_new_world()
-        })
+        World(unsafe { librdf_new_world() })
     }
 
     pub fn as_mut_ptr(&self) -> *mut librdf_world {
@@ -56,14 +57,14 @@ impl Drop for Model {
 pub struct Serializer(pub *mut librdf_serializer);
 
 impl Serializer {
-    pub fn set_namespace<S: Into<Vec<u8>>>(&self, uri: *mut librdf_uri, prefix: S) -> Result<(), i32> {
+    pub fn set_namespace<S: Into<Vec<u8>>>(
+        &self,
+        uri: *mut librdf_uri,
+        prefix: S,
+    ) -> Result<(), i32> {
         let c_prefix = CString::new(prefix).map_err(|_| -1)?;
 
-        let res = unsafe { librdf_serializer_set_namespace(
-            self.0,
-            uri,
-            c_prefix.as_ptr(),
-        ) };
+        let res = unsafe { librdf_serializer_set_namespace(self.0, uri, c_prefix.as_ptr()) };
         if res != 0 {
             return Err(res);
         }
@@ -72,8 +73,11 @@ impl Serializer {
 
     pub fn serialize_model_to_string(&self, model: &Model) -> Result<String, i32> {
         unsafe {
-            let result =
-                librdf_serializer_serialize_model_to_string(self.0, ptr::null_mut(), model.as_mut_ptr());
+            let result = librdf_serializer_serialize_model_to_string(
+                self.0,
+                ptr::null_mut(),
+                model.as_mut_ptr(),
+            );
             if result.is_null() {
                 return Err(-1);
             }
