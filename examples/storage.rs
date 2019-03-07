@@ -18,7 +18,6 @@ use std::ffi::CStr;
 use std::fs::File;
 use std::io::prelude::*;
 use std::ptr;
-use std::slice;
 
 use bincode::{deserialize, serialize};
 
@@ -70,10 +69,8 @@ fn main() {
 
         // Convert entries into a hash
         {
-            let model = create_mock_model(&world, storage);
-
             // Create mock entries and write to a file
-            let model = create_mock_model(&world, storage);
+            let _model = create_mock_model(&world, storage);
             let entry_actions = get_entry_actions(storage as *mut _);
             println!("{:?}", entry_actions);
 

@@ -1,11 +1,7 @@
 //! Redland storage implementation based on key/value representation.
 //! Converted from C code into Rust using C2Rust.
 
-use libc::{c_char, c_uchar};
 use crate::*;
-use std::ffi::CStr;
-use std::fs::File;
-use std::io::prelude::*;
 use std::ptr;
 use std::slice;
 
@@ -1717,7 +1713,7 @@ pub struct librdf_storage_hashes_serialise_stream_context {
     pub current_is_ok: libc::c_int,
 }
 #[no_mangle]
-pub unsafe extern "C" fn librdf_init_storage_hashes(mut world: *mut librdf_world) {
+pub unsafe extern "C" fn librdf_init_storage_hashes(world: *mut librdf_world) {
     librdf_storage_register_factory(
         world,
         b"mdata\x00" as *const u8 as *const libc::c_char,
@@ -1726,7 +1722,7 @@ pub unsafe extern "C" fn librdf_init_storage_hashes(mut world: *mut librdf_world
     );
 }
 unsafe extern "C" fn librdf_storage_hashes_register_factory(
-    mut factory: *mut librdf_storage_factory,
+    factory: *mut librdf_storage_factory,
 ) {
     if 0 != strcmp(
         (*factory).name,
@@ -1777,10 +1773,10 @@ unsafe extern "C" fn librdf_storage_hashes_register_factory(
  * exists or the value is empty.
  **/
 unsafe extern "C" fn librdf_storage_hashes_get_feature(
-    mut storage: *mut librdf_storage,
-    mut feature: *mut librdf_uri,
+    storage: *mut librdf_storage,
+    feature: *mut librdf_uri,
 ) -> *mut librdf_node {
-    let mut scontext: *mut librdf_storage_hashes_instance =
+    let scontext: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     let mut uri_string: *mut libc::c_uchar = 0 as *mut libc::c_uchar;
     if feature.is_null() {
@@ -1821,9 +1817,9 @@ unsafe extern "C" fn librdf_storage_hashes_get_feature(
  * Return value: #librdf_iterator of context_nodes or NULL on failure or no contexts
  **/
 unsafe extern "C" fn librdf_storage_hashes_get_contexts(
-    mut storage: *mut librdf_storage,
+    storage: *mut librdf_storage,
 ) -> *mut librdf_iterator {
-    let mut context: *mut librdf_storage_hashes_instance =
+    let context: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     let mut icontext: *mut librdf_storage_hashes_get_contexts_iterator_context =
         0 as *mut librdf_storage_hashes_get_contexts_iterator_context;
@@ -1880,8 +1876,8 @@ unsafe extern "C" fn librdf_storage_hashes_get_contexts(
         }
     };
 }
-unsafe extern "C" fn librdf_storage_hashes_get_contexts_finished(mut iterator: *mut libc::c_void) {
-    let mut icontext: *mut librdf_storage_hashes_get_contexts_iterator_context =
+unsafe extern "C" fn librdf_storage_hashes_get_contexts_finished(iterator: *mut libc::c_void) {
+    let icontext: *mut librdf_storage_hashes_get_contexts_iterator_context =
         iterator as *mut librdf_storage_hashes_get_contexts_iterator_context;
     if !(*icontext).iterator.is_null() {
         librdf_free_iterator((*icontext).iterator);
@@ -1896,10 +1892,10 @@ unsafe extern "C" fn librdf_storage_hashes_get_contexts_finished(mut iterator: *
     free(icontext as *mut libc::c_void);
 }
 unsafe extern "C" fn librdf_storage_hashes_get_contexts_get_method(
-    mut iterator: *mut libc::c_void,
-    mut flags: libc::c_int,
+    iterator: *mut libc::c_void,
+    flags: libc::c_int,
 ) -> *mut libc::c_void {
-    let mut icontext: *mut librdf_storage_hashes_get_contexts_iterator_context =
+    let icontext: *mut librdf_storage_hashes_get_contexts_iterator_context =
         iterator as *mut librdf_storage_hashes_get_contexts_iterator_context;
     let mut result: *mut libc::c_void = 0 as *mut libc::c_void;
     let mut k: *mut librdf_hash_datum = 0 as *mut librdf_hash_datum;
@@ -1939,21 +1935,21 @@ unsafe extern "C" fn librdf_storage_hashes_get_contexts_get_method(
     return result;
 }
 unsafe extern "C" fn librdf_storage_hashes_get_contexts_next_method(
-    mut iterator: *mut libc::c_void,
+    iterator: *mut libc::c_void,
 ) -> libc::c_int {
-    let mut icontext: *mut librdf_storage_hashes_get_contexts_iterator_context =
+    let icontext: *mut librdf_storage_hashes_get_contexts_iterator_context =
         iterator as *mut librdf_storage_hashes_get_contexts_iterator_context;
     return librdf_iterator_next((*icontext).iterator);
 }
 unsafe extern "C" fn librdf_storage_hashes_get_contexts_is_end(
-    mut iterator: *mut libc::c_void,
+    iterator: *mut libc::c_void,
 ) -> libc::c_int {
-    let mut icontext: *mut librdf_storage_hashes_get_contexts_iterator_context =
+    let icontext: *mut librdf_storage_hashes_get_contexts_iterator_context =
         iterator as *mut librdf_storage_hashes_get_contexts_iterator_context;
     return librdf_iterator_end((*icontext).iterator);
 }
-unsafe extern "C" fn librdf_storage_hashes_sync(mut storage: *mut librdf_storage) -> libc::c_int {
-    let mut context: *mut librdf_storage_hashes_instance =
+unsafe extern "C" fn librdf_storage_hashes_sync(storage: *mut librdf_storage) -> libc::c_int {
+    let context: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     let mut i: libc::c_int = 0;
     i = 0i32;
@@ -1964,10 +1960,10 @@ unsafe extern "C" fn librdf_storage_hashes_sync(mut storage: *mut librdf_storage
     return 0i32;
 }
 unsafe extern "C" fn librdf_storage_hashes_context_serialise(
-    mut storage: *mut librdf_storage,
-    mut context_node: *mut librdf_node,
+    storage: *mut librdf_storage,
+    context_node: *mut librdf_node,
 ) -> *mut librdf_stream {
-    let mut context: *mut librdf_storage_hashes_instance =
+    let context: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     let mut scontext: *mut librdf_storage_hashes_context_serialise_stream_context =
         0 as *mut librdf_storage_hashes_context_serialise_stream_context;
@@ -2049,9 +2045,9 @@ unsafe extern "C" fn librdf_storage_hashes_context_serialise(
     };
 }
 unsafe extern "C" fn librdf_storage_hashes_context_serialise_finished(
-    mut context: *mut libc::c_void,
+    context: *mut libc::c_void,
 ) {
-    let mut scontext: *mut librdf_storage_hashes_context_serialise_stream_context =
+    let scontext: *mut librdf_storage_hashes_context_serialise_stream_context =
         context as *mut librdf_storage_hashes_context_serialise_stream_context;
     if !(*scontext).context_node.is_null() {
         librdf_free_node((*scontext).context_node);
@@ -2076,8 +2072,8 @@ unsafe extern "C" fn librdf_storage_hashes_context_serialise_finished(
     free(scontext as *mut libc::c_void);
 }
 unsafe extern "C" fn librdf_storage_hashes_context_serialise_get_statement(
-    mut context: *mut libc::c_void,
-    mut flags: libc::c_int,
+    context: *mut libc::c_void,
+    flags: libc::c_int,
 ) -> *mut libc::c_void {
     let mut scontext: *mut librdf_storage_hashes_context_serialise_stream_context =
         0 as *mut librdf_storage_hashes_context_serialise_stream_context;
@@ -2131,27 +2127,27 @@ unsafe extern "C" fn librdf_storage_hashes_context_serialise_get_statement(
     };
 }
 unsafe extern "C" fn librdf_storage_hashes_context_serialise_next_statement(
-    mut context: *mut libc::c_void,
+    context: *mut libc::c_void,
 ) -> libc::c_int {
-    let mut scontext: *mut librdf_storage_hashes_context_serialise_stream_context =
+    let scontext: *mut librdf_storage_hashes_context_serialise_stream_context =
         context as *mut librdf_storage_hashes_context_serialise_stream_context;
     (*scontext).current_is_ok = 0i32;
     return librdf_iterator_next((*scontext).iterator);
 }
 /* context list statement stream methods */
 unsafe extern "C" fn librdf_storage_hashes_context_serialise_end_of_stream(
-    mut context: *mut libc::c_void,
+    context: *mut libc::c_void,
 ) -> libc::c_int {
-    let mut scontext: *mut librdf_storage_hashes_context_serialise_stream_context =
+    let scontext: *mut librdf_storage_hashes_context_serialise_stream_context =
         context as *mut librdf_storage_hashes_context_serialise_stream_context;
     return librdf_iterator_end((*scontext).iterator);
 }
 unsafe extern "C" fn librdf_storage_hashes_context_remove_statement(
-    mut storage: *mut librdf_storage,
-    mut context_node: *mut librdf_node,
-    mut statement: *mut librdf_statement,
+    storage: *mut librdf_storage,
+    context_node: *mut librdf_node,
+    statement: *mut librdf_statement,
 ) -> libc::c_int {
-    let mut context: *mut librdf_storage_hashes_instance =
+    let context: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     /* on stack - not allocated */
     let mut key: librdf_hash_datum = librdf_hash_datum_s {
@@ -2168,7 +2164,7 @@ unsafe extern "C" fn librdf_storage_hashes_context_remove_statement(
     };
     let mut size: size_t = 0;
     let mut status: libc::c_int = 0;
-    let mut world: *mut librdf_world = (*storage).world;
+    let world: *mut librdf_world = (*storage).world;
     if !context_node.is_null() && (*context).contexts_index < 0i32 {
         librdf_log(
             (*storage).world,
@@ -2200,24 +2196,24 @@ unsafe extern "C" fn librdf_storage_hashes_context_remove_statement(
     };
 }
 
-pub unsafe extern "C" fn get_entry_actions<'a>(mut storage: *mut librdf_storage) -> &'a [EntryAction] {
-    let mut context: *mut librdf_storage_hashes_instance =
+pub unsafe extern "C" fn get_entry_actions<'a>(storage: *mut librdf_storage) -> &'a [EntryAction] {
+    let context: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
 
     &(*(*context).mdata_context).entry_actions
 }
 
 unsafe extern "C" fn librdf_storage_hashes_add_remove_statement(
-    mut storage: *mut librdf_storage,
-    mut statement: *mut librdf_statement,
-    mut context_node: *mut librdf_node,
-    mut is_addition: libc::c_int,
+    storage: *mut librdf_storage,
+    statement: *mut librdf_statement,
+    context_node: *mut librdf_node,
+    is_addition: libc::c_int,
 ) -> libc::c_int {
-    let mut context: *mut librdf_storage_hashes_instance =
+    let context: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     let mut i: libc::c_int = 0;
     let mut status: libc::c_int = 0i32;
-    let mut world: *mut librdf_world = (*storage).world;
+    let world: *mut librdf_world = (*storage).world;
     i = 0i32;
     while i < (*context).hash_count {
         /* on stack */
@@ -2358,9 +2354,9 @@ unsafe extern "C" fn librdf_storage_hashes_add_remove_statement(
     return status;
 }
 unsafe extern "C" fn librdf_storage_hashes_grow_buffer(
-    mut buffer: *mut *mut libc::c_uchar,
-    mut len: *mut size_t,
-    mut required_len: size_t,
+    buffer: *mut *mut libc::c_uchar,
+    len: *mut size_t,
+    required_len: size_t,
 ) -> libc::c_int {
     if required_len <= *len {
         return 0i32;
@@ -2378,11 +2374,11 @@ unsafe extern "C" fn librdf_storage_hashes_grow_buffer(
 }
 /* context functions */
 unsafe extern "C" fn librdf_storage_hashes_context_add_statement(
-    mut storage: *mut librdf_storage,
-    mut context_node: *mut librdf_node,
-    mut statement: *mut librdf_statement,
+    storage: *mut librdf_storage,
+    context_node: *mut librdf_node,
+    statement: *mut librdf_statement,
 ) -> libc::c_int {
-    let mut context: *mut librdf_storage_hashes_instance =
+    let context: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     /* on stack - not allocated */
     let mut key: librdf_hash_datum = librdf_hash_datum_s {
@@ -2399,7 +2395,7 @@ unsafe extern "C" fn librdf_storage_hashes_context_add_statement(
     };
     let mut size: size_t = 0;
     let mut status: libc::c_int = 0;
-    let mut world: *mut librdf_world = (*storage).world;
+    let world: *mut librdf_world = (*storage).world;
     if (*context).contexts_index < 0i32 {
         librdf_log(
             (*storage).world,
@@ -2430,11 +2426,11 @@ unsafe extern "C" fn librdf_storage_hashes_context_add_statement(
     return status;
 }
 unsafe extern "C" fn librdf_storage_hashes_find_targets(
-    mut storage: *mut librdf_storage,
-    mut source: *mut librdf_node,
-    mut arc: *mut librdf_node,
+    storage: *mut librdf_storage,
+    source: *mut librdf_node,
+    arc: *mut librdf_node,
 ) -> *mut librdf_iterator {
-    let mut scontext: *mut librdf_storage_hashes_instance =
+    let scontext: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     return librdf_storage_hashes_node_iterator_create(
         storage,
@@ -2446,13 +2442,13 @@ unsafe extern "C" fn librdf_storage_hashes_find_targets(
 }
 /* common initialisation code for creating get sources, targets, arcs iterators */
 unsafe extern "C" fn librdf_storage_hashes_node_iterator_create(
-    mut storage: *mut librdf_storage,
+    storage: *mut librdf_storage,
     mut node1: *mut librdf_node,
     mut node2: *mut librdf_node,
-    mut hash_index: libc::c_int,
-    mut want: libc::c_int,
+    hash_index: libc::c_int,
+    want: libc::c_int,
 ) -> *mut librdf_iterator {
-    let mut scontext: *mut librdf_storage_hashes_instance =
+    let scontext: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     let mut icontext: *mut librdf_storage_hashes_node_iterator_context =
         0 as *mut librdf_storage_hashes_node_iterator_context;
@@ -2460,7 +2456,7 @@ unsafe extern "C" fn librdf_storage_hashes_node_iterator_create(
     let mut fields: librdf_statement_part = 0 as librdf_statement_part;
     let mut key_buffer: *mut libc::c_uchar = 0 as *mut libc::c_uchar;
     let mut iterator: *mut librdf_iterator = 0 as *mut librdf_iterator;
-    let mut world: *mut librdf_world = (*storage).world;
+    let world: *mut librdf_world = (*storage).world;
     icontext = calloc(
         1i32 as libc::c_ulong,
         ::std::mem::size_of::<librdf_storage_hashes_node_iterator_context>() as libc::c_ulong,
@@ -2588,8 +2584,8 @@ unsafe extern "C" fn librdf_storage_hashes_node_iterator_create(
         }
     };
 }
-unsafe extern "C" fn librdf_storage_hashes_node_iterator_finished(mut iterator: *mut libc::c_void) {
-    let mut icontext: *mut librdf_storage_hashes_node_iterator_context =
+unsafe extern "C" fn librdf_storage_hashes_node_iterator_finished(iterator: *mut libc::c_void) {
+    let icontext: *mut librdf_storage_hashes_node_iterator_context =
         iterator as *mut librdf_storage_hashes_node_iterator_context;
     let mut node: *mut librdf_node = 0 as *mut librdf_node;
     if !(*icontext).search_node.is_null() {
@@ -2612,10 +2608,10 @@ unsafe extern "C" fn librdf_storage_hashes_node_iterator_finished(mut iterator: 
     free(icontext as *mut libc::c_void);
 }
 unsafe extern "C" fn librdf_storage_hashes_node_iterator_get_method(
-    mut iterator: *mut libc::c_void,
-    mut flags: libc::c_int,
+    iterator: *mut libc::c_void,
+    flags: libc::c_int,
 ) -> *mut libc::c_void {
-    let mut context: *mut librdf_storage_hashes_node_iterator_context =
+    let context: *mut librdf_storage_hashes_node_iterator_context =
         iterator as *mut librdf_storage_hashes_node_iterator_context;
     let mut node: *mut librdf_node = 0 as *mut librdf_node;
     let mut value: *mut librdf_hash_datum = 0 as *mut librdf_hash_datum;
@@ -2757,9 +2753,9 @@ unsafe extern "C" fn librdf_storage_hashes_node_iterator_get_method(
     };
 }
 unsafe extern "C" fn librdf_storage_hashes_node_iterator_next_method(
-    mut iterator: *mut libc::c_void,
+    iterator: *mut libc::c_void,
 ) -> libc::c_int {
-    let mut context: *mut librdf_storage_hashes_node_iterator_context =
+    let context: *mut librdf_storage_hashes_node_iterator_context =
         iterator as *mut librdf_storage_hashes_node_iterator_context;
     if 0 != librdf_iterator_end((*context).iterator) {
         return 1i32;
@@ -2769,18 +2765,18 @@ unsafe extern "C" fn librdf_storage_hashes_node_iterator_next_method(
 }
 /* node iterator implementing functions for get sources, targets, arcs methods */
 unsafe extern "C" fn librdf_storage_hashes_node_iterator_is_end(
-    mut iterator: *mut libc::c_void,
+    iterator: *mut libc::c_void,
 ) -> libc::c_int {
-    let mut context: *mut librdf_storage_hashes_node_iterator_context =
+    let context: *mut librdf_storage_hashes_node_iterator_context =
         iterator as *mut librdf_storage_hashes_node_iterator_context;
     return librdf_iterator_end((*context).iterator);
 }
 unsafe extern "C" fn librdf_storage_hashes_find_arcs(
-    mut storage: *mut librdf_storage,
-    mut source: *mut librdf_node,
-    mut target: *mut librdf_node,
+    storage: *mut librdf_storage,
+    source: *mut librdf_node,
+    target: *mut librdf_node,
 ) -> *mut librdf_iterator {
-    let mut scontext: *mut librdf_storage_hashes_instance =
+    let scontext: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     return librdf_storage_hashes_node_iterator_create(
         storage,
@@ -2791,11 +2787,11 @@ unsafe extern "C" fn librdf_storage_hashes_find_arcs(
     );
 }
 unsafe extern "C" fn librdf_storage_hashes_find_sources(
-    mut storage: *mut librdf_storage,
-    mut arc: *mut librdf_node,
-    mut target: *mut librdf_node,
+    storage: *mut librdf_storage,
+    arc: *mut librdf_node,
+    target: *mut librdf_node,
 ) -> *mut librdf_iterator {
-    let mut scontext: *mut librdf_storage_hashes_instance =
+    let scontext: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     return librdf_storage_hashes_node_iterator_create(
         storage,
@@ -2806,10 +2802,10 @@ unsafe extern "C" fn librdf_storage_hashes_find_sources(
     );
 }
 unsafe extern "C" fn librdf_storage_hashes_find_statements(
-    mut storage: *mut librdf_storage,
+    storage: *mut librdf_storage,
     mut statement: *mut librdf_statement,
 ) -> *mut librdf_stream {
-    let mut context: *mut librdf_storage_hashes_instance =
+    let context: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     let mut stream: *mut librdf_stream = 0 as *mut librdf_stream;
     if librdf_statement_get_subject(statement).is_null()
@@ -2846,9 +2842,9 @@ unsafe extern "C" fn librdf_storage_hashes_find_statements(
     return stream;
 }
 unsafe extern "C" fn librdf_storage_hashes_serialise(
-    mut storage: *mut librdf_storage,
+    storage: *mut librdf_storage,
 ) -> *mut librdf_stream {
-    let mut context: *mut librdf_storage_hashes_instance =
+    let context: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     return librdf_storage_hashes_serialise_common(
         storage,
@@ -2858,12 +2854,12 @@ unsafe extern "C" fn librdf_storage_hashes_serialise(
     );
 }
 unsafe extern "C" fn librdf_storage_hashes_serialise_common(
-    mut storage: *mut librdf_storage,
-    mut hash_index: libc::c_int,
-    mut search_node: *mut librdf_node,
-    mut want: libc::c_int,
+    storage: *mut librdf_storage,
+    hash_index: libc::c_int,
+    search_node: *mut librdf_node,
+    want: libc::c_int,
 ) -> *mut librdf_stream {
-    let mut context: *mut librdf_storage_hashes_instance =
+    let context: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     let mut scontext: *mut librdf_storage_hashes_serialise_stream_context =
         0 as *mut librdf_storage_hashes_serialise_stream_context;
@@ -2930,8 +2926,8 @@ unsafe extern "C" fn librdf_storage_hashes_serialise_common(
         }
     };
 }
-unsafe extern "C" fn librdf_storage_hashes_serialise_finished(mut context: *mut libc::c_void) {
-    let mut scontext: *mut librdf_storage_hashes_serialise_stream_context =
+unsafe extern "C" fn librdf_storage_hashes_serialise_finished(context: *mut libc::c_void) {
+    let scontext: *mut librdf_storage_hashes_serialise_stream_context =
         context as *mut librdf_storage_hashes_serialise_stream_context;
     if !(*scontext).iterator.is_null() {
         librdf_free_iterator((*scontext).iterator);
@@ -2954,10 +2950,10 @@ unsafe extern "C" fn librdf_storage_hashes_serialise_finished(mut context: *mut 
     free(scontext as *mut libc::c_void);
 }
 unsafe extern "C" fn librdf_storage_hashes_serialise_get_statement(
-    mut context: *mut libc::c_void,
-    mut flags: libc::c_int,
+    context: *mut libc::c_void,
+    flags: libc::c_int,
 ) -> *mut libc::c_void {
-    let mut scontext: *mut librdf_storage_hashes_serialise_stream_context =
+    let scontext: *mut librdf_storage_hashes_serialise_stream_context =
         context as *mut librdf_storage_hashes_serialise_stream_context;
     let mut hd: *mut librdf_hash_datum = 0 as *mut librdf_hash_datum;
     let mut cnp: *mut *mut librdf_node = 0 as *mut *mut librdf_node;
@@ -3050,26 +3046,26 @@ unsafe extern "C" fn librdf_storage_hashes_serialise_get_statement(
     };
 }
 unsafe extern "C" fn librdf_storage_hashes_serialise_next_statement(
-    mut context: *mut libc::c_void,
+    context: *mut libc::c_void,
 ) -> libc::c_int {
-    let mut scontext: *mut librdf_storage_hashes_serialise_stream_context =
+    let scontext: *mut librdf_storage_hashes_serialise_stream_context =
         context as *mut librdf_storage_hashes_serialise_stream_context;
     (*scontext).current_is_ok = 0i32;
     return librdf_iterator_next((*scontext).iterator);
 }
 /* serialising implementing functions */
 unsafe extern "C" fn librdf_storage_hashes_serialise_end_of_stream(
-    mut context: *mut libc::c_void,
+    context: *mut libc::c_void,
 ) -> libc::c_int {
-    let mut scontext: *mut librdf_storage_hashes_serialise_stream_context =
+    let scontext: *mut librdf_storage_hashes_serialise_stream_context =
         context as *mut librdf_storage_hashes_serialise_stream_context;
     return librdf_iterator_end((*scontext).iterator);
 }
 unsafe extern "C" fn librdf_storage_hashes_contains_statement(
-    mut storage: *mut librdf_storage,
-    mut statement: *mut librdf_statement,
+    storage: *mut librdf_storage,
+    statement: *mut librdf_statement,
 ) -> libc::c_int {
-    let mut context: *mut librdf_storage_hashes_instance =
+    let context: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     /* on stack */
     let mut hd_key: librdf_hash_datum = librdf_hash_datum_s {
@@ -3088,16 +3084,16 @@ unsafe extern "C" fn librdf_storage_hashes_contains_statement(
     let mut value_buffer: *mut libc::c_uchar = 0 as *mut libc::c_uchar;
     let mut key_len: size_t = 0;
     let mut value_len: size_t = 0;
-    let mut hash_index: libc::c_int = (*context).all_statements_hash_index;
+    let hash_index: libc::c_int = (*context).all_statements_hash_index;
     let mut fields: librdf_statement_part = 0 as librdf_statement_part;
     let mut status: libc::c_int = 0;
-    let mut world: *mut librdf_world = (*storage).world;
+    let world: *mut librdf_world = (*storage).world;
     if 0 != (*context).index_contexts {
         /* When we have contexts, we have to use find_statements for contains
          * since a statement is encoded in KEY/VALUE and the VALUE may
          * contain some context node.
          */
-        let mut stream: *mut librdf_stream =
+        let stream: *mut librdf_stream =
             librdf_storage_hashes_find_statements(storage, statement);
         if stream.is_null() {
             return 0i32;
@@ -3192,8 +3188,8 @@ unsafe extern "C" fn librdf_storage_hashes_contains_statement(
     };
 }
 unsafe extern "C" fn librdf_storage_hashes_remove_statement(
-    mut storage: *mut librdf_storage,
-    mut statement: *mut librdf_statement,
+    storage: *mut librdf_storage,
+    statement: *mut librdf_statement,
 ) -> libc::c_int {
     return librdf_storage_hashes_add_remove_statement(
         storage,
@@ -3203,12 +3199,12 @@ unsafe extern "C" fn librdf_storage_hashes_remove_statement(
     );
 }
 unsafe extern "C" fn librdf_storage_hashes_add_statements(
-    mut storage: *mut librdf_storage,
-    mut statement_stream: *mut librdf_stream,
+    storage: *mut librdf_storage,
+    statement_stream: *mut librdf_stream,
 ) -> libc::c_int {
     let mut status: libc::c_int = 0i32;
     while 0 == librdf_stream_end(statement_stream) {
-        let mut statement: *mut librdf_statement = librdf_stream_get_object(statement_stream);
+        let statement: *mut librdf_statement = librdf_stream_get_object(statement_stream);
         if !statement.is_null() {
             status = librdf_storage_hashes_add_statement(storage, statement)
         } else {
@@ -3222,8 +3218,8 @@ unsafe extern "C" fn librdf_storage_hashes_add_statements(
     return status;
 }
 unsafe extern "C" fn librdf_storage_hashes_add_statement(
-    mut storage: *mut librdf_storage,
-    mut statement: *mut librdf_statement,
+    storage: *mut librdf_storage,
+    statement: *mut librdf_statement,
 ) -> libc::c_int {
     /* Do not add duplicate statements */
     if 0 != librdf_storage_hashes_contains_statement(storage, statement) {
@@ -3237,10 +3233,10 @@ unsafe extern "C" fn librdf_storage_hashes_add_statement(
         );
     };
 }
-unsafe extern "C" fn librdf_storage_hashes_size(mut storage: *mut librdf_storage) -> libc::c_int {
-    let mut context: *mut librdf_storage_hashes_instance =
+unsafe extern "C" fn librdf_storage_hashes_size(storage: *mut librdf_storage) -> libc::c_int {
+    let context: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
-    let mut any_hash: *mut librdf_hash = *(*context)
+    let any_hash: *mut librdf_hash = *(*context)
         .hashes
         .offset((*context).all_statements_hash_index as isize);
     if any_hash.is_null() {
@@ -3249,8 +3245,8 @@ unsafe extern "C" fn librdf_storage_hashes_size(mut storage: *mut librdf_storage
         return librdf_hash_values_count(any_hash);
     };
 }
-unsafe extern "C" fn librdf_storage_hashes_close(mut storage: *mut librdf_storage) -> libc::c_int {
-    let mut context: *mut librdf_storage_hashes_instance =
+unsafe extern "C" fn librdf_storage_hashes_close(storage: *mut librdf_storage) -> libc::c_int {
+    let context: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     let mut i: libc::c_int = 0;
     i = 0i32;
@@ -3264,10 +3260,10 @@ unsafe extern "C" fn librdf_storage_hashes_close(mut storage: *mut librdf_storag
 }
 
 pub unsafe extern "C" fn librdf_storage_hashes_copy_from_kv(
-    mut storage: *mut librdf_storage,
+    storage: *mut librdf_storage,
     eas: &mut [EntryAction],
 ) {
-    let mut context: *mut librdf_storage_hashes_instance =
+    let context: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
 
     let mut hd_key: librdf_hash_datum = librdf_hash_datum_s {
@@ -3292,7 +3288,7 @@ pub unsafe extern "C" fn librdf_storage_hashes_copy_from_kv(
                 hd_value.data = value.as_mut_ptr() as *mut _;
                 hd_value.size = value.len() as u64;
 
-                let status = librdf_hash_put(
+                let _status = librdf_hash_put(
                     *(*context).hashes.offset(*i as isize),
                     &mut hd_key,
                     &mut hd_value,
@@ -3304,16 +3300,16 @@ pub unsafe extern "C" fn librdf_storage_hashes_copy_from_kv(
 }
 
 unsafe extern "C" fn librdf_storage_hashes_open(
-    mut storage: *mut librdf_storage,
-    mut model: *mut librdf_model,
+    storage: *mut librdf_storage,
+    _model: *mut librdf_model,
 ) -> libc::c_int {
-    let mut context: *mut librdf_storage_hashes_instance =
+    let context: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     let mut i: libc::c_int = 0;
     let mut result: libc::c_int = 0i32;
     i = 0i32;
     while i < (*context).hash_count {
-        let mut hash: *mut librdf_hash = *(*context).hashes.offset(i as isize);
+        let hash: *mut librdf_hash = *(*context).hashes.offset(i as isize);
         if hash.is_null()
             || 0 != librdf_hash_open(
                 hash,
@@ -3342,8 +3338,8 @@ unsafe extern "C" fn librdf_storage_hashes_open(
     }
     return result;
 }
-unsafe extern "C" fn librdf_storage_hashes_terminate(mut storage: *mut librdf_storage) {
-    let mut context: *mut librdf_storage_hashes_instance =
+unsafe extern "C" fn librdf_storage_hashes_terminate(storage: *mut librdf_storage) {
+    let context: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     let mut i: libc::c_int = 0;
     if context.is_null() {
@@ -3401,8 +3397,8 @@ unsafe extern "C" fn librdf_storage_hashes_terminate(mut storage: *mut librdf_st
     };
 }
 unsafe extern "C" fn librdf_storage_hashes_clone(
-    mut new_storage: *mut librdf_storage,
-    mut old_storage: *mut librdf_storage,
+    new_storage: *mut librdf_storage,
+    old_storage: *mut librdf_storage,
 ) -> libc::c_int {
     let mut current_block: u64;
     let mut old_context: *mut librdf_storage_hashes_instance =
@@ -3511,15 +3507,15 @@ unsafe extern "C" fn librdf_storage_hashes_clone(
     return 1i32;
 }
 unsafe extern "C" fn librdf_storage_hashes_init_common(
-    mut storage: *mut librdf_storage,
-    mut name: *const libc::c_char,
-    mut hash_type: *mut libc::c_char,
-    mut db_dir: *mut libc::c_char,
-    mut indexes: *mut libc::c_char,
-    mut mode: libc::c_int,
-    mut is_writable: libc::c_int,
-    mut is_new: libc::c_int,
-    mut options: *mut librdf_hash,
+    storage: *mut librdf_storage,
+    name: *const libc::c_char,
+    hash_type: *mut libc::c_char,
+    db_dir: *mut libc::c_char,
+    indexes: *mut libc::c_char,
+    mode: libc::c_int,
+    is_writable: libc::c_int,
+    is_new: libc::c_int,
+    options: *mut librdf_hash,
 ) -> libc::c_int {
     let mut context: *mut librdf_storage_hashes_instance = 0 as *mut librdf_storage_hashes_instance;
     let mut i: libc::c_int = 0;
@@ -3704,7 +3700,7 @@ unsafe extern "C" fn librdf_storage_hashes_init_common(
 /* For '(?, p, ?)' */
 /* for contexts - do not touch when storing statements! */
 unsafe extern "C" fn librdf_storage_get_hash_description_by_name(
-    mut name: *const libc::c_char,
+    name: *const libc::c_char,
 ) -> *const librdf_hash_descriptor {
     let mut i: libc::c_int = 0;
     let mut d: *const librdf_hash_descriptor = 0 as *const librdf_hash_descriptor;
@@ -3762,11 +3758,11 @@ static mut librdf_storage_hashes_descriptions: [librdf_hash_descriptor; 6] = [
 ];
 /* helper function for implementing init and clone methods */
 unsafe extern "C" fn librdf_storage_hashes_register(
-    mut storage: *mut librdf_storage,
-    mut name: *const libc::c_char,
-    mut source_desc: *const librdf_hash_descriptor,
+    storage: *mut librdf_storage,
+    name: *const libc::c_char,
+    source_desc: *const librdf_hash_descriptor,
 ) -> libc::c_int {
-    let mut context: *mut librdf_storage_hashes_instance =
+    let context: *mut librdf_storage_hashes_instance =
         (*storage).instance as *mut librdf_storage_hashes_instance;
     let mut len: size_t = 0;
     let mut full_name: *mut libc::c_char = 0 as *mut libc::c_char;
@@ -3832,9 +3828,9 @@ unsafe extern "C" fn librdf_storage_hashes_register(
 }
 /* prototypes for local functions */
 unsafe extern "C" fn librdf_storage_hashes_init(
-    mut storage: *mut librdf_storage,
-    mut name: *const libc::c_char,
-    mut options: *mut librdf_hash,
+    storage: *mut librdf_storage,
+    name: *const libc::c_char,
+    options: *mut librdf_hash,
 ) -> libc::c_int {
     let mut hash_type: *mut libc::c_char = 0 as *mut libc::c_char;
     let mut db_dir: *mut libc::c_char = 0 as *mut libc::c_char;
