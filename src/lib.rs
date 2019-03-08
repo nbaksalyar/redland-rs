@@ -10,9 +10,9 @@ extern crate serde_derive;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-pub mod kv_storage;
+mod kv_storage;
 
-use kv_storage::KvStorage;
+pub use kv_storage::{EntryAction, KvStorage};
 use libc::c_char;
 use std::{
     ffi::{CStr, CString},

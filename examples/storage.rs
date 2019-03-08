@@ -2,9 +2,9 @@ extern crate bincode;
 extern crate libc;
 extern crate redland_rs;
 
-use libc::{c_char, c_uchar};
-use redland_rs::kv_storage::*;
-use redland_rs::*;
+use libc::c_char;
+use redland_rs::librdf_new_serializer;
+use redland_rs::{EntryAction, KvStorage, Model, Node, Serializer, Uri, World};
 use std::fs::File;
 use std::io::prelude::*;
 use std::ptr;
