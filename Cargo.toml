@@ -5,9 +5,11 @@ authors = ["MaidSafe Developers <dev@maidsafe.net>"]
 
 [dependencies]
 libc = "~0.2.44"
-bincode = "1.1.2"
-serde_derive = "1.0.89"
-serde = "1.0.89"
+serde_derive = "~1.0.89"
+serde = "~1.0.89"
+
+[dev-dependencies]
+bincode = "~1.1.2"
 
 [build-dependencies]
-bindgen = "0.43.2"
+bindgen = "~0.43.2"
