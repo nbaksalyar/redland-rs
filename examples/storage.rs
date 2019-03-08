@@ -21,18 +21,16 @@ use std::ptr;
 use bincode::{deserialize, serialize};
 
 unsafe fn create_mock_model(world: &World, storage: &KvStorage) -> Model {
-    let ms_schema = librdf_new_uri(
-        world.as_mut_ptr(),
-        b"http://maidsafe.net/\0" as *const _ as *const c_uchar,
-    );
+    let ms_schema = Uri::new(world, "http://maidsafe.net/").unwrap();
+
     let subject = librdf_new_node_from_uri_local_name(
         world.as_mut_ptr(),
-        ms_schema,
+        ms_schema.as_mut_ptr(),
         b"MaidSafe\0" as *const _ as *const c_uchar,
     );
     let predicate = librdf_new_node_from_uri_local_name(
         world.as_mut_ptr(),
-        ms_schema,
+        ms_schema.as_mut_ptr(),
         b"location\0" as *const _ as *const c_uchar,
     );
 
@@ -98,11 +96,8 @@ fn main() {
             ptr::null(),
             ptr::null_mut(),
         ));
-        let ms_schema = librdf_new_uri(
-            world.as_mut_ptr(),
-            b"http://maidsafe.net/\0" as *const _ as *const c_uchar,
-        );
-        serializer.set_namespace(ms_schema, "ms").unwrap();
+        let ms_schema = Uri::new(&world, "http://maidsafe.net/").unwrap();
+        serializer.set_namespace(&ms_schema, "ms").unwrap();
 
         println!("{}", serializer.serialize_model_to_string(&model).unwrap());
     }

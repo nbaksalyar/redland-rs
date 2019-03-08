@@ -54,17 +54,30 @@ impl Drop for Model {
     }
 }
 
+pub struct Uri(*mut librdf_uri);
+
+impl Uri {
+    pub fn new<S: Into<Vec<u8>>>(world: &World, uri: S) -> Result<Self, i32> {
+        let cstr_uri = CString::new(uri).map_err(|_| -1)?;
+        let res = unsafe { librdf_new_uri(world.as_mut_ptr(), cstr_uri.as_ptr() as *const _) };
+        if res.is_null() {
+            return Err(-1);
+        }
+        Ok(Uri(res))
+    }
+
+    pub fn as_mut_ptr(&self) -> *mut librdf_uri {
+        self.0
+    }
+}
+
 pub struct Serializer(pub *mut librdf_serializer);
 
 impl Serializer {
-    pub fn set_namespace<S: Into<Vec<u8>>>(
-        &self,
-        uri: *mut librdf_uri,
-        prefix: S,
-    ) -> Result<(), i32> {
+    pub fn set_namespace<S: Into<Vec<u8>>>(&self, uri: &Uri, prefix: S) -> Result<(), i32> {
         let c_prefix = CString::new(prefix).map_err(|_| -1)?;
-
-        let res = unsafe { librdf_serializer_set_namespace(self.0, uri, c_prefix.as_ptr()) };
+        let res =
+            unsafe { librdf_serializer_set_namespace(self.0, uri.as_mut_ptr(), c_prefix.as_ptr()) };
         if res != 0 {
             return Err(res);
         }
