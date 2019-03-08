@@ -1,6 +1,8 @@
 extern crate bincode;
 extern crate libc;
 extern crate redland_rs;
+#[macro_use]
+extern crate unwrap;
 
 use libc::c_char;
 use redland_rs::librdf_new_serializer;
@@ -22,36 +24,36 @@ fn create_mock_model(world: &World, storage: &KvStorage) -> Result<Model, i32> {
 
 fn main() {
     let world = World::new();
-    let mut storage = KvStorage::new(&world).unwrap();
+    let mut storage = unwrap!(KvStorage::new(&world));
 
     // Convert entries into a hash
     {
         // Create mock entries and write to a file
-        let _model = create_mock_model(&world, &storage).unwrap();
+        let _model = unwrap!(create_mock_model(&world, &storage));
         let entry_actions = storage.entry_actions();
         println!("{:?}", entry_actions);
 
-        let ser = serialize(entry_actions).unwrap();
+        let ser = unwrap!(serialize(entry_actions));
 
         {
-            let mut file = File::create("md-storage").unwrap();
+            let mut file = unwrap!(File::create("md-storage"));
             file.write_all(&ser).unwrap();
         }
     }
 
     // Load entries from a file
     let mut entry_actions: Vec<EntryAction> = {
-        let mut file = File::open("md-storage").unwrap();
+        let mut file = unwrap!(File::open("md-storage"));
         let mut contents = Vec::new();
-        file.read_to_end(&mut contents).unwrap();
+        unwrap!(file.read_to_end(&mut contents));
 
-        deserialize(&contents).unwrap()
+        unwrap!(deserialize(&contents))
     };
     println!("{:?}", entry_actions);
 
-    storage.copy_entries(&mut entry_actions);
+    unwrap!(storage.copy_entries(&mut entry_actions));
 
-    let model = Model::new(&world, &storage).unwrap();
+    let model = unwrap!(Model::new(&world, &storage));
 
     // Serialise to string - Turtle
     let serializer = Serializer(unsafe {
@@ -62,8 +64,8 @@ fn main() {
             ptr::null_mut(),
         )
     });
-    let ms_schema = Uri::new(&world, "http://maidsafe.net/").unwrap();
-    serializer.set_namespace(&ms_schema, "ms").unwrap();
+    let ms_schema = unwrap!(Uri::new(&world, "http://maidsafe.net/"));
+    unwrap!(serializer.set_namespace(&ms_schema, "ms"));
 
-    println!("{}", serializer.serialize_model_to_string(&model).unwrap());
+    println!("{}", unwrap!(serializer.serialize_model_to_string(&model)));
 }

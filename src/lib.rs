@@ -43,8 +43,14 @@ pub struct Model(*mut librdf_model);
 
 impl Model {
     pub fn new(world: &World, storage: &KvStorage) -> Result<Self, i32> {
-        let res =
-            unsafe { librdf_new_model(world.as_mut_ptr(), storage.as_mut_ptr(), ptr::null()) };
+        unsafe { Self::from_raw_storage(world, storage.as_mut_ptr()) }
+    }
+
+    pub unsafe fn from_raw_storage(
+        world: &World,
+        storage: *mut librdf_storage,
+    ) -> Result<Self, i32> {
+        let res = librdf_new_model(world.as_mut_ptr(), storage, ptr::null());
         if res.is_null() {
             return Err(-1);
         }
