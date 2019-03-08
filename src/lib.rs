@@ -71,6 +71,58 @@ impl Uri {
     }
 }
 
+impl Drop for Uri {
+    fn drop(&mut self) {
+        unsafe {
+            librdf_free_uri(self.0);
+        }
+    }
+}
+
+pub struct Node(*mut librdf_node);
+
+impl Node {
+    pub fn new(world: &World) -> Result<Self, i32> {
+        let res = unsafe { librdf_new_node(world.as_mut_ptr()) };
+        if res.is_null() {
+            return Err(-1);
+        }
+        Ok(Node(res))
+    }
+
+    /// Creates a new Node from a URI with an appended name
+    pub fn new_from_uri_local_name<S: Into<Vec<u8>>>(
+        world: &World,
+        uri: &Uri,
+        local_name: S,
+    ) -> Result<Self, i32> {
+        let cstr_local_name = CString::new(local_name).map_err(|_| -1)?;
+        let res = unsafe {
+            librdf_new_node_from_uri_local_name(
+                world.as_mut_ptr(),
+                uri.as_mut_ptr(),
+                cstr_local_name.as_ptr() as *const _,
+            )
+        };
+        if res.is_null() {
+            return Err(-1);
+        }
+        Ok(Node(res))
+    }
+
+    pub fn as_mut_ptr(&self) -> *mut librdf_node {
+        self.0
+    }
+}
+
+impl Drop for Node {
+    fn drop(&mut self) {
+        unsafe {
+            librdf_free_node(self.0);
+        }
+    }
+}
+
 pub struct Serializer(pub *mut librdf_serializer);
 
 impl Serializer {

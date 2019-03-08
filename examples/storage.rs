@@ -20,19 +20,10 @@ use std::ptr;
 
 use bincode::{deserialize, serialize};
 
-unsafe fn create_mock_model(world: &World, storage: &KvStorage) -> Model {
-    let ms_schema = Uri::new(world, "http://maidsafe.net/").unwrap();
-
-    let subject = librdf_new_node_from_uri_local_name(
-        world.as_mut_ptr(),
-        ms_schema.as_mut_ptr(),
-        b"MaidSafe\0" as *const _ as *const c_uchar,
-    );
-    let predicate = librdf_new_node_from_uri_local_name(
-        world.as_mut_ptr(),
-        ms_schema.as_mut_ptr(),
-        b"location\0" as *const _ as *const c_uchar,
-    );
+unsafe fn create_mock_model(world: &World, storage: &KvStorage) -> Result<Model, i32> {
+    let ms_schema = Uri::new(world, "http://maidsafe.net/")?;
+    let subject = Node::new_from_uri_local_name(world, &ms_schema, "MaidSafe")?;
+    let predicate = Node::new_from_uri_local_name(world, &ms_schema, "location")?;
 
     let model = Model(librdf_new_model(
         world.as_mut_ptr(),
@@ -41,14 +32,14 @@ unsafe fn create_mock_model(world: &World, storage: &KvStorage) -> Model {
     ));
     librdf_model_add_string_literal_statement(
         model.0,
-        subject,
-        predicate,
+        subject.as_mut_ptr(),
+        predicate.as_mut_ptr(),
         b"Ayr\0" as *const _ as *const c_uchar,
         ptr::null(),
         0,
     );
 
-    model
+    Ok(model)
 }
 
 fn main() {
@@ -59,7 +50,7 @@ fn main() {
         // Convert entries into a hash
         {
             // Create mock entries and write to a file
-            let _model = create_mock_model(&world, &storage);
+            let _model = create_mock_model(&world, &storage).unwrap();
             let entry_actions = storage.entry_actions();
             println!("{:?}", entry_actions);
 
