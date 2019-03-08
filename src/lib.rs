@@ -2,11 +2,15 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(unsafe_code)]
+#![allow(unused_assignments)]
 
 extern crate libc;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+#[cfg(test)]
+#[macro_use]
+extern crate unwrap;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
@@ -105,6 +109,22 @@ impl Model {
     pub fn as_mut_ptr(&self) -> *mut librdf_model {
         self.0
     }
+
+    pub fn iter(&self) -> impl Iterator {
+        let stream = unsafe { librdf_model_as_stream(self.as_mut_ptr()) };
+        ModelIter(stream)
+    }
+}
+
+struct ModelIter(*mut librdf_stream);
+
+impl Iterator for ModelIter {
+    type Item = Statement;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // unsafe { librdf_stream_get_object() }
+        None
+    }
 }
 
 impl Drop for Model {
@@ -114,6 +134,8 @@ impl Drop for Model {
         }
     }
 }
+
+pub struct Statement(*mut librdf_statement);
 
 pub struct Uri(*mut librdf_uri);
 
@@ -225,5 +247,22 @@ impl Drop for Serializer {
         unsafe {
             librdf_free_serializer(self.0);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{KvStorage, Model, World};
+
+    #[test]
+    fn model_iterator() {
+        let world = World::new();
+        let storage = unwrap!(KvStorage::new(&world));
+        let model = unwrap!(Model::new(&world, &storage));
+
+        let mut iter = model.iter();
+
+        // When we have no statements in the model, the iterator must return None
+        assert!(iter.next().is_none());
     }
 }
