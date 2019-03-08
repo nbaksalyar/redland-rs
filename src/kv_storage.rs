@@ -39,33 +39,38 @@ impl KvStorage {
         }
     }
 
-    pub fn copy_entries(&mut self, eas: &mut [EntryAction]) {
-        unsafe {
-            let context: *mut librdf_storage_hashes_instance =
-                (*self.0).instance as *mut librdf_storage_hashes_instance;
+    pub fn copy_entries(&mut self, eas: &mut [EntryAction]) -> Result<(), i32> {
+        let context: *mut librdf_storage_hashes_instance =
+            unsafe { (*self.0).instance as *mut librdf_storage_hashes_instance };
 
-            let mut hd_key: librdf_hash_datum = Default::default();
-            let mut hd_value: librdf_hash_datum = Default::default();
+        let mut hd_key: librdf_hash_datum = Default::default();
+        let mut hd_value: librdf_hash_datum = Default::default();
 
-            for action in eas {
-                match action {
-                    EntryAction::Insert(ref i, ref mut key, ref mut value) => {
-                        hd_key.data = key.as_mut_ptr() as *mut _;
-                        hd_key.size = key.len() as u64;
+        for action in eas {
+            match action {
+                EntryAction::Insert(ref i, ref mut key, ref mut value) => {
+                    hd_key.data = key.as_mut_ptr() as *mut _;
+                    hd_key.size = key.len() as u64;
 
-                        hd_value.data = value.as_mut_ptr() as *mut _;
-                        hd_value.size = value.len() as u64;
+                    hd_value.data = value.as_mut_ptr() as *mut _;
+                    hd_value.size = value.len() as u64;
 
-                        let _status = librdf_hash_put(
+                    let status = unsafe {
+                        librdf_hash_put(
                             *(*context).hashes.offset(*i as isize),
                             &mut hd_key,
                             &mut hd_value,
-                        );
+                        )
+                    };
+                    if status != 0 {
+                        return Err(-1);
                     }
-                    EntryAction::Delete(_i, _key) => {}
                 }
+                EntryAction::Delete(_i, _key) => {}
             }
         }
+
+        Ok(())
     }
 
     pub fn as_mut_ptr(&self) -> *mut super::librdf_storage {
