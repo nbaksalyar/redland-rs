@@ -12,6 +12,7 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 pub mod kv_storage;
 
+use kv_storage::KvStorage;
 use libc::c_char;
 use std::{
     ffi::{CStr, CString},
@@ -38,9 +39,63 @@ impl Drop for World {
     }
 }
 
-pub struct Model(pub *mut librdf_model);
+pub struct Model(*mut librdf_model);
 
 impl Model {
+    pub fn new(world: &World, storage: &KvStorage) -> Result<Self, i32> {
+        let res =
+            unsafe { librdf_new_model(world.as_mut_ptr(), storage.as_mut_ptr(), ptr::null()) };
+        if res.is_null() {
+            return Err(-1);
+        }
+        Ok(Model(res))
+    }
+
+    pub fn add(&self, subject: &Node, predicate: &Node, object: &Node) -> Result<(), i32> {
+        let res = unsafe {
+            librdf_model_add(
+                self.0,
+                subject.as_mut_ptr(),
+                predicate.as_mut_ptr(),
+                object.as_mut_ptr(),
+            )
+        };
+        if res != 0 {
+            return Err(res);
+        }
+        return Ok(());
+    }
+
+    pub fn add_string_literal_statement<S: Into<Vec<u8>>>(
+        &self,
+        subject: &Node,
+        predicate: &Node,
+        literal: S,
+        xml_language: Option<S>,
+        is_xml: bool,
+    ) -> Result<(), i32> {
+        let literal_cstr = CString::new(literal).map_err(|_| -1)?;
+        let xml_lang_cstr = xml_language.map(|s| CString::new(s).map_err(|_| -1));
+        let res = unsafe {
+            librdf_model_add_string_literal_statement(
+                self.0,
+                subject.as_mut_ptr(),
+                predicate.as_mut_ptr(),
+                literal_cstr.as_ptr() as *const _,
+                if let Some(xml_lang) = xml_lang_cstr {
+                    xml_lang?.as_ptr() as *const _
+                } else {
+                    ptr::null()
+                },
+                is_xml as i32,
+            )
+        };
+        if res != 0 {
+            return Err(res);
+        }
+        return Ok(());
+    }
+
     pub fn as_mut_ptr(&self) -> *mut librdf_model {
         self.0
     }

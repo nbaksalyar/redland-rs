@@ -1,12 +1,3 @@
-#![allow(
-    dead_code,
-    mutable_transmutes,
-    non_camel_case_types,
-    non_snake_case,
-    non_upper_case_globals,
-    unused_mut
-)]
-
 extern crate bincode;
 extern crate libc;
 extern crate redland_rs;
@@ -20,76 +11,59 @@ use std::ptr;
 
 use bincode::{deserialize, serialize};
 
-unsafe fn create_mock_model(world: &World, storage: &KvStorage) -> Result<Model, i32> {
+fn create_mock_model(world: &World, storage: &KvStorage) -> Result<Model, i32> {
     let ms_schema = Uri::new(world, "http://maidsafe.net/")?;
     let subject = Node::new_from_uri_local_name(world, &ms_schema, "MaidSafe")?;
     let predicate = Node::new_from_uri_local_name(world, &ms_schema, "location")?;
-
-    let model = Model(librdf_new_model(
-        world.as_mut_ptr(),
-        storage.as_mut_ptr(),
-        ptr::null(),
-    ));
-    librdf_model_add_string_literal_statement(
-        model.0,
-        subject.as_mut_ptr(),
-        predicate.as_mut_ptr(),
-        b"Ayr\0" as *const _ as *const c_uchar,
-        ptr::null(),
-        0,
-    );
-
+    let model = Model::new(world, storage)?;
+    model.add_string_literal_statement(&subject, &predicate, "Ayr", None, false)?;
     Ok(model)
 }
 
 fn main() {
-    unsafe {
-        let world = World::new();
-        let mut storage = KvStorage::new(&world).unwrap();
+    let world = World::new();
+    let mut storage = KvStorage::new(&world).unwrap();
 
-        // Convert entries into a hash
-        {
-            // Create mock entries and write to a file
-            let _model = create_mock_model(&world, &storage).unwrap();
-            let entry_actions = storage.entry_actions();
-            println!("{:?}", entry_actions);
-
-            let ser = serialize(entry_actions).unwrap();
-
-            {
-                let mut file = File::create("md-storage").unwrap();
-                file.write_all(&ser).unwrap();
-            }
-        }
-
-        // Load entries from a file
-        let mut entry_actions: Vec<EntryAction> = {
-            let mut file = File::open("md-storage").unwrap();
-            let mut contents = Vec::new();
-            file.read_to_end(&mut contents).unwrap();
-
-            deserialize(&contents).unwrap()
-        };
+    // Convert entries into a hash
+    {
+        // Create mock entries and write to a file
+        let _model = create_mock_model(&world, &storage).unwrap();
+        let entry_actions = storage.entry_actions();
         println!("{:?}", entry_actions);
 
-        storage.copy_entries(&mut entry_actions);
+        let ser = serialize(entry_actions).unwrap();
 
-        let model = Model(librdf_new_model(
-            world.as_mut_ptr(),
-            storage.as_mut_ptr(),
-            ptr::null(),
-        ));
+        {
+            let mut file = File::create("md-storage").unwrap();
+            file.write_all(&ser).unwrap();
+        }
+    }
 
-        // Serialise to string - Turtle
-        let serializer = Serializer(librdf_new_serializer(
+    // Load entries from a file
+    let mut entry_actions: Vec<EntryAction> = {
+        let mut file = File::open("md-storage").unwrap();
+        let mut contents = Vec::new();
+        file.read_to_end(&mut contents).unwrap();
+
+        deserialize(&contents).unwrap()
+    };
+    println!("{:?}", entry_actions);
+
+    storage.copy_entries(&mut entry_actions);
+
+    let model = Model::new(&world, &storage).unwrap();
+
+    // Serialise to string - Turtle
+    let serializer = Serializer(unsafe {
+        librdf_new_serializer(
             world.as_mut_ptr(),
             b"turtle\0" as *const _ as *const c_char,
             ptr::null(),
             ptr::null_mut(),
-        ));
-        let ms_schema = Uri::new(&world, "http://maidsafe.net/").unwrap();
-        serializer.set_namespace(&ms_schema, "ms").unwrap();
+        )
+    });
+    let ms_schema = Uri::new(&world, "http://maidsafe.net/").unwrap();
+    serializer.set_namespace(&ms_schema, "ms").unwrap();
 
-        println!("{}", serializer.serialize_model_to_string(&model).unwrap());
-    }
+    println!("{}", serializer.serialize_model_to_string(&model).unwrap());
 }
