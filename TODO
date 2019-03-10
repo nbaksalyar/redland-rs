@@ -1,0 +1,4 @@
+- Proper error types
+- Split the bindgen code into redland_rs-sys crate
+- Add more tests
+- Make sure `Model` / `Storage` can't outlive `World`

@@ -6,7 +6,6 @@ extern crate unwrap;
 use redland_rs::*;
 
 use libc::c_char;
-use std::ffi::CStr;
 use std::ptr;
 
 fn main() {
@@ -31,7 +30,7 @@ fn main() {
     });
 
     let ms_schema = unwrap!(Uri::new(&world, "http://maidsafe.net/"));
-    serializer.set_namespace(&ms_schema, "ms");
+    unwrap!(serializer.set_namespace(&ms_schema, "ms"));
 
     let subject = unwrap!(Node::new_from_uri_local_name(
         &world, &ms_schema, "MaidSafe"
