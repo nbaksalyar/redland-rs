@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["MaidSafe Developers <dev@maidsafe.net>"]
 
 [dependencies]
+foreign-types = "~0.4.0"
 libc = "~0.2.44"
 serde_derive = "~1.0.89"
 serde = "~1.0.89"
