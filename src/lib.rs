@@ -179,11 +179,13 @@ foreign_type! {
     pub type Statement {
         type CType = librdf_statement;
         fn drop = librdf_free_statement;
+        fn clone = librdf_new_statement_from_statement;
     }
 
     pub type Node {
         type CType = librdf_node;
         fn drop = librdf_free_node;
+        fn clone = librdf_new_node_from_node;
     }
 }
 
