@@ -13,14 +13,14 @@ extern crate serde_derive;
 #[cfg(test)]
 #[macro_use]
 extern crate unwrap;
-
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+extern crate redland_sys;
 
 mod kv_storage;
 
 use foreign_types::{ForeignType, ForeignTypeRef};
 pub use kv_storage::{EntryAction, KvStorage};
 use libc::c_char;
+use redland_sys::*;
 use std::{
     ffi::{CStr, CString},
     fmt,
@@ -28,52 +28,74 @@ use std::{
     mem, ptr,
 };
 
-pub struct World(*mut librdf_world);
+foreign_type! {
+    pub type World {
+        type CType = librdf_world;
+        fn drop = librdf_free_world;
+    }
+
+    pub type Model {
+        type CType = librdf_model;
+        fn drop = librdf_free_model;
+        fn clone = librdf_new_model_from_model;
+    }
+
+    pub type Statement {
+        type CType = librdf_statement;
+        fn drop = librdf_free_statement;
+        fn clone = librdf_new_statement_from_statement;
+    }
+
+    pub type Node {
+        type CType = librdf_node;
+        fn drop = librdf_free_node;
+        fn clone = librdf_new_node_from_node;
+    }
+
+    pub type Query {
+        type CType = librdf_query;
+        fn drop = librdf_free_query;
+        fn clone = librdf_new_query_from_query;
+    }
+
+    pub type Uri {
+        type CType = librdf_uri;
+        fn drop = librdf_free_uri;
+        fn clone = librdf_new_uri_from_uri;
+    }
+
+    pub type Serializer {
+        type CType = librdf_serializer;
+        fn drop = librdf_free_serializer;
+    }
+}
 
 impl World {
     pub fn new() -> Self {
-        World(unsafe { librdf_new_world() })
-    }
-
-    pub fn as_mut_ptr(&self) -> *mut librdf_world {
-        self.0
+        unsafe { World::from_ptr(librdf_new_world()) }
     }
 }
-
-impl Drop for World {
-    fn drop(&mut self) {
-        unsafe {
-            librdf_free_world(self.0);
-        }
-    }
-}
-
-pub struct Model(*mut librdf_model);
 
 impl Model {
     pub fn new(world: &World, storage: &KvStorage) -> Result<Self, i32> {
-        unsafe { Self::from_raw_storage(world, storage.as_mut_ptr()) }
-    }
-
-    pub fn len(&self) -> i32 {
-        unsafe { librdf_model_size(self.0) }
+        unsafe { Self::from_raw_storage(world, storage.as_ptr()) }
     }
 
     pub unsafe fn from_raw_storage(
         world: &World,
         storage: *mut librdf_storage,
     ) -> Result<Self, i32> {
-        let res = librdf_new_model(world.as_mut_ptr(), storage, ptr::null());
+        let res = librdf_new_model(world.as_ptr(), storage, ptr::null());
         if res.is_null() {
             return Err(-1);
         }
-        Ok(Model(res))
+        Ok(Model::from_ptr(res))
     }
 
     pub fn add(&self, subject: &Node, predicate: &Node, object: &Node) -> Result<(), i32> {
         let res = unsafe {
             librdf_model_add(
-                self.0,
+                self.as_ptr(),
                 subject.as_ptr(),
                 predicate.as_ptr(),
                 object.as_ptr(),
@@ -86,7 +108,7 @@ impl Model {
     }
 
     pub fn add_statement(&self, statement: &Statement) -> Result<(), i32> {
-        let res = unsafe { librdf_model_add_statement(self.0, statement.as_ptr()) };
+        let res = unsafe { librdf_model_add_statement(self.as_ptr(), statement.as_ptr()) };
         if res != 0 {
             return Err(res);
         }
@@ -105,7 +127,7 @@ impl Model {
         let xml_lang_cstr = xml_language.map(|s| CString::new(s).map_err(|_| -1));
         let res = unsafe {
             librdf_model_add_string_literal_statement(
-                self.0,
+                self.as_ptr(),
                 subject.as_ptr(),
                 predicate.as_ptr(),
                 literal_cstr.as_ptr() as *const _,
@@ -122,18 +144,20 @@ impl Model {
         }
         return Ok(());
     }
+}
 
-    pub fn as_mut_ptr(&self) -> *mut librdf_model {
-        self.0
-    }
-
+impl ModelRef {
     pub fn iter(&self) -> ModelIter {
-        let stream = unsafe { librdf_model_as_stream(self.as_mut_ptr()) };
+        let stream = unsafe { librdf_model_as_stream(self.as_ptr()) };
         ModelIter {
             ptr: stream,
             first: true,
             _marker: PhantomData,
         }
+    }
+
+    pub fn len(&self) -> i32 {
+        unsafe { librdf_model_size(self.as_ptr()) }
     }
 }
 
@@ -167,31 +191,36 @@ impl<'a> Drop for ModelIter<'a> {
     }
 }
 
-impl Drop for Model {
-    fn drop(&mut self) {
-        unsafe {
-            librdf_free_model(self.0);
+impl Query {
+    /// Creates a new query object, using a provided query language.
+    pub fn new<S: Into<Vec<u8>>>(
+        world: &World,
+        query_language: S,
+        query_string: S,
+        base_uri: &Option<Uri>,
+    ) -> Result<Self, i32> {
+        let c_query_string = CString::new(query_string).map_err(|_| -1)?;
+        let c_query_lang = CString::new(query_language).map_err(|_| -1)?;
+
+        let res = unsafe {
+            librdf_new_query(
+                world.as_ptr(),
+                c_query_lang.as_ptr(),
+                ptr::null_mut(),
+                c_query_string.as_ptr() as *const _,
+                base_uri.as_ref().map_or_else(ptr::null_mut, |u| u.as_ptr()),
+            )
+        };
+        if res.is_null() {
+            return Err(-1);
         }
-    }
-}
-
-foreign_type! {
-    pub type Statement {
-        type CType = librdf_statement;
-        fn drop = librdf_free_statement;
-        fn clone = librdf_new_statement_from_statement;
-    }
-
-    pub type Node {
-        type CType = librdf_node;
-        fn drop = librdf_free_node;
-        fn clone = librdf_new_node_from_node;
+        Ok(unsafe { Query::from_ptr(res) })
     }
 }
 
 impl Statement {
     pub fn new(world: &World) -> Result<Self, i32> {
-        let res = unsafe { librdf_new_statement(world.as_mut_ptr()) };
+        let res = unsafe { librdf_new_statement(world.as_ptr()) };
         if res.is_null() {
             return Err(-1);
         }
@@ -250,28 +279,14 @@ impl fmt::Debug for Statement {
     }
 }
 
-pub struct Uri(*mut librdf_uri);
-
 impl Uri {
     pub fn new<S: Into<Vec<u8>>>(world: &World, uri: S) -> Result<Self, i32> {
         let cstr_uri = CString::new(uri).map_err(|_| -1)?;
-        let res = unsafe { librdf_new_uri(world.as_mut_ptr(), cstr_uri.as_ptr() as *const _) };
+        let res = unsafe { librdf_new_uri(world.as_ptr(), cstr_uri.as_ptr() as *const _) };
         if res.is_null() {
             return Err(-1);
         }
-        Ok(Uri(res))
-    }
-
-    pub fn as_mut_ptr(&self) -> *mut librdf_uri {
-        self.0
-    }
-}
-
-impl Drop for Uri {
-    fn drop(&mut self) {
-        unsafe {
-            librdf_free_uri(self.0);
-        }
+        Ok(unsafe { Uri::from_ptr(res) })
     }
 }
 
@@ -296,7 +311,7 @@ impl PartialEq for NodeRef {
 
 impl Node {
     pub fn new(world: &World) -> Result<Self, i32> {
-        let res = unsafe { librdf_new_node(world.as_mut_ptr()) };
+        let res = unsafe { librdf_new_node(world.as_ptr()) };
         if res.is_null() {
             return Err(-1);
         }
@@ -314,7 +329,7 @@ impl Node {
         let xml_lang_cstr = xml_language.map(|s| CString::new(s).map_err(|_| -1));
         let res = unsafe {
             librdf_new_node_from_literal(
-                world.as_mut_ptr(),
+                world.as_ptr(),
                 cstr.as_ptr() as *const _,
                 if let Some(xml_lang) = xml_lang_cstr {
                     xml_lang?.as_ptr() as *const _
@@ -339,8 +354,8 @@ impl Node {
         let cstr_local_name = CString::new(local_name).map_err(|_| -1)?;
         let res = unsafe {
             librdf_new_node_from_uri_local_name(
-                world.as_mut_ptr(),
-                uri.as_mut_ptr(),
+                world.as_ptr(),
+                uri.as_ptr(),
                 cstr_local_name.as_ptr() as *const _,
             )
         };
@@ -352,7 +367,7 @@ impl Node {
 
     /// Creates a new Node from a URI
     pub fn new_from_uri(world: &World, uri: &Uri) -> Result<Self, i32> {
-        let res = unsafe { librdf_new_node_from_uri(world.as_mut_ptr(), uri.as_mut_ptr()) };
+        let res = unsafe { librdf_new_node_from_uri(world.as_ptr(), uri.as_ptr()) };
         if res.is_null() {
             return Err(-1);
         }
@@ -360,13 +375,38 @@ impl Node {
     }
 }
 
-pub struct Serializer(pub *mut librdf_serializer);
-
 impl Serializer {
+    pub fn new<S: Into<Vec<u8>>>(
+        world: &World,
+        name: S,
+        mime_type: Option<S>,
+        type_uri: Option<&Uri>,
+    ) -> Result<Self, i32> {
+        let c_name = CString::new(name).map_err(|_| -1)?;
+        let c_mime = mime_type.map(|s| CString::new(s).map_err(|_| -1));
+        let ser = unsafe {
+            librdf_new_serializer(
+                world.as_ptr(),
+                c_name.as_ptr(),
+                if let Some(mime) = c_mime {
+                    mime?.as_ptr() as *const _
+                } else {
+                    ptr::null()
+                },
+                type_uri.as_ref().map_or_else(ptr::null_mut, |u| u.as_ptr()),
+            )
+        };
+        if ser.is_null() {
+            return Err(-1);
+        }
+        Ok(unsafe { Serializer::from_ptr(ser) })
+    }
+
     pub fn set_namespace<S: Into<Vec<u8>>>(&self, uri: &Uri, prefix: S) -> Result<(), i32> {
         let c_prefix = CString::new(prefix).map_err(|_| -1)?;
-        let res =
-            unsafe { librdf_serializer_set_namespace(self.0, uri.as_mut_ptr(), c_prefix.as_ptr()) };
+        let res = unsafe {
+            librdf_serializer_set_namespace(self.as_ptr(), uri.as_ptr(), c_prefix.as_ptr())
+        };
         if res != 0 {
             return Err(res);
         }
@@ -376,9 +416,9 @@ impl Serializer {
     pub fn serialize_model_to_string(&self, model: &Model) -> Result<String, i32> {
         unsafe {
             let result = librdf_serializer_serialize_model_to_string(
-                self.0,
+                self.as_ptr(),
                 ptr::null_mut(),
-                model.as_mut_ptr(),
+                model.as_ptr(),
             );
             if result.is_null() {
                 return Err(-1);
@@ -392,14 +432,6 @@ impl Serializer {
             librdf_free_memory(result as *mut _);
 
             return res.ok_or(-1);
-        }
-    }
-}
-
-impl Drop for Serializer {
-    fn drop(&mut self) {
-        unsafe {
-            librdf_free_serializer(self.0);
         }
     }
 }

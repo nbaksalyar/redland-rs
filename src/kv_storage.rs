@@ -11,12 +11,12 @@ pub struct KvStorage(*mut self::librdf_storage);
 impl KvStorage {
     pub fn new(world: &World) -> Result<Self, i32> {
         unsafe {
-            librdf_init_storage_hashes(world.as_mut_ptr());
+            librdf_init_storage_hashes(world.as_ptr());
         }
 
         let storage = unsafe {
             librdf_new_storage(
-                world.as_mut_ptr(),
+                world.as_ptr(),
                 b"mdata\0" as *const _ as *const c_char,
                 b"mdata\0" as *const _ as *const c_char,
                 b"hash-type='memory'\0" as *const _ as *const c_char,
@@ -73,7 +73,7 @@ impl KvStorage {
         Ok(())
     }
 
-    pub fn as_mut_ptr(&self) -> *mut super::librdf_storage {
+    pub fn as_ptr(&self) -> *mut super::librdf_storage {
         self.0 as *mut _
     }
 }

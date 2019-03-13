@@ -8,10 +8,9 @@ foreign-types = "~0.4.0"
 libc = "~0.2.44"
 serde_derive = "~1.0.89"
 serde = "~1.0.89"
+redland-sys = { path = "./redland-sys" }
 
 [dev-dependencies]
 bincode = "~1.1.2"
 unwrap = "~1.2.0"
 
-[build-dependencies]
-bindgen = "~0.43.2"

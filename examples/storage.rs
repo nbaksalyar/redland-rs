@@ -5,11 +5,9 @@ extern crate redland_rs;
 extern crate unwrap;
 
 use libc::c_char;
-use redland_rs::librdf_new_serializer;
 use redland_rs::{EntryAction, KvStorage, Model, Node, Serializer, Uri, World};
 use std::fs::File;
 use std::io::prelude::*;
-use std::ptr;
 
 use bincode::{deserialize, serialize};
 
@@ -56,14 +54,7 @@ fn main() {
     let model = unwrap!(Model::new(&world, &storage));
 
     // Serialise to string - Turtle
-    let serializer = Serializer(unsafe {
-        librdf_new_serializer(
-            world.as_mut_ptr(),
-            b"turtle\0" as *const _ as *const c_char,
-            ptr::null(),
-            ptr::null_mut(),
-        )
-    });
+    let serializer = unwrap!(Serializer::new(&world, "turtle", None, None));
     let ms_schema = unwrap!(Uri::new(&world, "http://maidsafe.net/"));
     unwrap!(serializer.set_namespace(&ms_schema, "ms"));
 
