@@ -6,11 +6,12 @@
 
 #[macro_use]
 extern crate foreign_types;
+#[macro_use]
+extern crate lazy_static;
 extern crate libc;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-#[cfg(test)]
 #[macro_use]
 extern crate unwrap;
 extern crate redland_sys;
@@ -21,6 +22,7 @@ use foreign_types::{ForeignType, ForeignTypeRef};
 pub use kv_storage::{EntryAction, KvStorage};
 use libc::c_char;
 use redland_sys::*;
+use std::sync::Mutex;
 use std::{
     ffi::{CStr, CString},
     fmt,
@@ -29,7 +31,7 @@ use std::{
 };
 
 foreign_type! {
-    pub type World {
+    pub type World: Sync + Send {
         type CType = librdf_world;
         fn drop = librdf_free_world;
     }
@@ -70,22 +72,30 @@ foreign_type! {
     }
 }
 
+lazy_static! {
+    pub(crate) static ref WORLD: Mutex<World> = {
+        let w = World::new();
+        Mutex::new(w)
+    };
+}
+
 impl World {
     pub fn new() -> Self {
-        unsafe { World::from_ptr(librdf_new_world()) }
+        unsafe {
+            let world_ptr = librdf_new_world();
+            librdf_world_open(world_ptr);
+            World::from_ptr(world_ptr)
+        }
     }
 }
 
 impl Model {
-    pub fn new(world: &World, storage: &KvStorage) -> Result<Self, i32> {
-        unsafe { Self::from_raw_storage(world, storage.as_ptr()) }
+    pub fn new(storage: &KvStorage) -> Result<Self, i32> {
+        unsafe { Self::from_raw_storage(storage.as_ptr()) }
     }
 
-    pub unsafe fn from_raw_storage(
-        world: &World,
-        storage: *mut librdf_storage,
-    ) -> Result<Self, i32> {
-        let res = librdf_new_model(world.as_ptr(), storage, ptr::null());
+    pub unsafe fn from_raw_storage(storage: *mut librdf_storage) -> Result<Self, i32> {
+        let res = librdf_new_model(unwrap!(WORLD.lock()).as_ptr(), storage, ptr::null());
         if res.is_null() {
             return Err(-1);
         }
@@ -194,7 +204,6 @@ impl<'a> Drop for ModelIter<'a> {
 impl Query {
     /// Creates a new query object, using a provided query language.
     pub fn new<S: Into<Vec<u8>>>(
-        world: &World,
         query_language: S,
         query_string: S,
         base_uri: &Option<Uri>,
@@ -204,7 +213,7 @@ impl Query {
 
         let res = unsafe {
             librdf_new_query(
-                world.as_ptr(),
+                unwrap!(WORLD.lock()).as_ptr(),
                 c_query_lang.as_ptr(),
                 ptr::null_mut(),
                 c_query_string.as_ptr() as *const _,
@@ -219,8 +228,8 @@ impl Query {
 }
 
 impl Statement {
-    pub fn new(world: &World) -> Result<Self, i32> {
-        let res = unsafe { librdf_new_statement(world.as_ptr()) };
+    pub fn new() -> Result<Self, i32> {
+        let res = unsafe { librdf_new_statement(unwrap!(WORLD.lock()).as_ptr()) };
         if res.is_null() {
             return Err(-1);
         }
@@ -280,9 +289,14 @@ impl fmt::Debug for Statement {
 }
 
 impl Uri {
-    pub fn new<S: Into<Vec<u8>>>(world: &World, uri: S) -> Result<Self, i32> {
+    pub fn new<S: Into<Vec<u8>>>(uri: S) -> Result<Self, i32> {
         let cstr_uri = CString::new(uri).map_err(|_| -1)?;
-        let res = unsafe { librdf_new_uri(world.as_ptr(), cstr_uri.as_ptr() as *const _) };
+        let res = unsafe {
+            librdf_new_uri(
+                unwrap!(WORLD.lock()).as_ptr(),
+                cstr_uri.as_ptr() as *const _,
+            )
+        };
         if res.is_null() {
             return Err(-1);
         }
@@ -310,8 +324,8 @@ impl PartialEq for NodeRef {
 }
 
 impl Node {
-    pub fn new(world: &World) -> Result<Self, i32> {
-        let res = unsafe { librdf_new_node(world.as_ptr()) };
+    pub fn new() -> Result<Self, i32> {
+        let res = unsafe { librdf_new_node(unwrap!(WORLD.lock()).as_ptr()) };
         if res.is_null() {
             return Err(-1);
         }
@@ -320,7 +334,6 @@ impl Node {
 
     /// Creates a new Node from a literal/string
     pub fn new_from_literal<S: Into<Vec<u8>>>(
-        world: &World,
         string: S,
         xml_language: Option<S>,
         is_xml: bool,
@@ -329,7 +342,7 @@ impl Node {
         let xml_lang_cstr = xml_language.map(|s| CString::new(s).map_err(|_| -1));
         let res = unsafe {
             librdf_new_node_from_literal(
-                world.as_ptr(),
+                unwrap!(WORLD.lock()).as_ptr(),
                 cstr.as_ptr() as *const _,
                 if let Some(xml_lang) = xml_lang_cstr {
                     xml_lang?.as_ptr() as *const _
@@ -347,14 +360,13 @@ impl Node {
 
     /// Creates a new Node from a URI with an appended name
     pub fn new_from_uri_local_name<S: Into<Vec<u8>>>(
-        world: &World,
         uri: &Uri,
         local_name: S,
     ) -> Result<Self, i32> {
         let cstr_local_name = CString::new(local_name).map_err(|_| -1)?;
         let res = unsafe {
             librdf_new_node_from_uri_local_name(
-                world.as_ptr(),
+                unwrap!(WORLD.lock()).as_ptr(),
                 uri.as_ptr(),
                 cstr_local_name.as_ptr() as *const _,
             )
@@ -366,8 +378,8 @@ impl Node {
     }
 
     /// Creates a new Node from a URI
-    pub fn new_from_uri(world: &World, uri: &Uri) -> Result<Self, i32> {
-        let res = unsafe { librdf_new_node_from_uri(world.as_ptr(), uri.as_ptr()) };
+    pub fn new_from_uri(uri: &Uri) -> Result<Self, i32> {
+        let res = unsafe { librdf_new_node_from_uri(unwrap!(WORLD.lock()).as_ptr(), uri.as_ptr()) };
         if res.is_null() {
             return Err(-1);
         }
@@ -377,7 +389,6 @@ impl Node {
 
 impl Serializer {
     pub fn new<S: Into<Vec<u8>>>(
-        world: &World,
         name: S,
         mime_type: Option<S>,
         type_uri: Option<&Uri>,
@@ -386,7 +397,7 @@ impl Serializer {
         let c_mime = mime_type.map(|s| CString::new(s).map_err(|_| -1));
         let ser = unsafe {
             librdf_new_serializer(
-                world.as_ptr(),
+                unwrap!(WORLD.lock()).as_ptr(),
                 c_name.as_ptr(),
                 if let Some(mime) = c_mime {
                     mime?.as_ptr() as *const _
@@ -438,20 +449,18 @@ impl Serializer {
 
 #[cfg(test)]
 mod tests {
-    use super::{KvStorage, Model, Node, Statement, Uri, World};
+    use super::{KvStorage, Model, Node, Statement, Uri};
 
     #[test]
     fn statement_constructor() {
-        let w = World::new();
+        let uri1 = unwrap!(Uri::new("https://localhost/#dolly"));
+        let uri2 = unwrap!(Uri::new("https://localhost/#hears"));
 
-        let uri1 = unwrap!(Uri::new(&w, "https://localhost/#dolly"));
-        let uri2 = unwrap!(Uri::new(&w, "https://localhost/#hears"));
+        let s = unwrap!(Node::new_from_uri(&uri1));
+        let p = unwrap!(Node::new_from_uri(&uri2));
+        let o = unwrap!(Node::new_from_literal("hello", None, false));
 
-        let s = unwrap!(Node::new_from_uri(&w, &uri1));
-        let p = unwrap!(Node::new_from_uri(&w, &uri2));
-        let o = unwrap!(Node::new_from_literal(&w, "hello", None, false));
-
-        let mut triple = unwrap!(Statement::new(&w));
+        let mut triple = unwrap!(Statement::new());
         triple.set_subject(s); // `s` moved to `triple`
 
         let s = triple.subject();
@@ -460,25 +469,26 @@ mod tests {
 
     #[test]
     fn model_iterator() {
-        let w = World::new();
-        let storage = unwrap!(KvStorage::new(&w));
-        let model = unwrap!(Model::new(&w, &storage));
+        let storage = unwrap!(KvStorage::new());
+        let model = unwrap!(Model::new(&storage));
 
-        let uri1 = unwrap!(Uri::new(&w, "https://localhost/#dolly"));
-        let uri2 = unwrap!(Uri::new(&w, "https://localhost/#hears"));
+        let uri1 = unwrap!(Uri::new("https://localhost/#dolly"));
+        let uri2 = unwrap!(Uri::new("https://localhost/#hears"));
 
-        let mut triple1 = unwrap!(Statement::new(&w));
-        triple1.set_subject(unwrap!(Node::new_from_uri(&w, &uri1)));
-        triple1.set_predicate(unwrap!(Node::new_from_uri(&w, &uri2)));
-        triple1.set_object(unwrap!(Node::new_from_literal(&w, "hello", None, false)));
+        let mut triple1 = unwrap!(Statement::new());
+        triple1.set_subject(unwrap!(Node::new_from_uri(&uri1)));
+        triple1.set_predicate(unwrap!(Node::new_from_uri(&uri2)));
+        triple1.set_object(unwrap!(Node::new_from_literal("hello", None, false)));
 
-        let mut triple2 = unwrap!(Statement::new(&w));
-        triple2.set_subject(unwrap!(Node::new_from_uri(&w, &uri1)));
-        triple2.set_predicate(unwrap!(Node::new_from_uri(&w, &uri2)));
-        triple2.set_object(unwrap!(Node::new_from_literal(&w, "goodbye", None, false)));
+        let mut triple2 = unwrap!(Statement::new());
+        triple2.set_subject(unwrap!(Node::new_from_uri(&uri1)));
+        triple2.set_predicate(unwrap!(Node::new_from_uri(&uri2)));
+        triple2.set_object(unwrap!(Node::new_from_literal("goodbye", None, false)));
 
         unwrap!(model.add_statement(&triple1));
         unwrap!(model.add_statement(&triple2));
+
+        // println!("{:?}, {:?}", triple1, triple2);
 
         assert_eq!(model.len(), 2);
 

@@ -24,19 +24,15 @@ fn main() {
         )
     };
 
-    let serializer = unwrap!(Serializer::new(&world, "turtle", None, None));
+    let serializer = unwrap!(Serializer::new("turtle", None, None));
 
-    let ms_schema = unwrap!(Uri::new(&world, "http://maidsafe.net/"));
+    let ms_schema = unwrap!(Uri::new("http://maidsafe.net/"));
     unwrap!(serializer.set_namespace(&ms_schema, "ms"));
 
-    let subject = unwrap!(Node::new_from_uri_local_name(
-        &world, &ms_schema, "MaidSafe"
-    ));
-    let predicate = unwrap!(Node::new_from_uri_local_name(
-        &world, &ms_schema, "location"
-    ));
+    let subject = unwrap!(Node::new_from_uri_local_name(&ms_schema, "MaidSafe"));
+    let predicate = unwrap!(Node::new_from_uri_local_name(&ms_schema, "location"));
 
-    let model = unwrap!(unsafe { Model::from_raw_storage(&world, storage) });
+    let model = unwrap!(unsafe { Model::from_raw_storage(storage) });
     unwrap!(model.add_string_literal_statement(&subject, &predicate, "Ayr", None, false));
     unwrap!(model.add_string_literal_statement(&subject, &predicate, "Scotland", None, false));
 

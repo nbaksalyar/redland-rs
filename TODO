@@ -1,4 +1,5 @@
 - Proper error types
-- Split the bindgen code into redland_rs-sys crate
 - Add more tests
 - Make sure `Model` / `Storage` can't outlive `World`
+- See if `World` is thread-safe. If it is, it would make sense to have a global
+  static var instead of accepting it as an arg of every constructor.

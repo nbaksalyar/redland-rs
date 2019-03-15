@@ -9,14 +9,16 @@ use std::slice;
 pub struct KvStorage(*mut self::librdf_storage);
 
 impl KvStorage {
-    pub fn new(world: &World) -> Result<Self, i32> {
+    pub fn new() -> Result<Self, i32> {
+        let world = { unwrap!(WORLD.lock()).as_ptr() };
+
         unsafe {
-            librdf_init_storage_hashes(world.as_ptr());
+            librdf_init_storage_hashes(world);
         }
 
         let storage = unsafe {
             librdf_new_storage(
-                world.as_ptr(),
+                world,
                 b"mdata\0" as *const _ as *const c_char,
                 b"mdata\0" as *const _ as *const c_char,
                 b"hash-type='memory'\0" as *const _ as *const c_char,

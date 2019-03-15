@@ -5,29 +5,28 @@ extern crate redland_rs;
 extern crate unwrap;
 
 use libc::c_char;
-use redland_rs::{EntryAction, KvStorage, Model, Node, Serializer, Uri, World};
+use redland_rs::{EntryAction, KvStorage, Model, Node, Serializer, Uri};
 use std::fs::File;
 use std::io::prelude::*;
 
 use bincode::{deserialize, serialize};
 
-fn create_mock_model(world: &World, storage: &KvStorage) -> Result<Model, i32> {
-    let ms_schema = Uri::new(world, "http://maidsafe.net/")?;
-    let subject = Node::new_from_uri_local_name(world, &ms_schema, "MaidSafe")?;
-    let predicate = Node::new_from_uri_local_name(world, &ms_schema, "location")?;
-    let model = Model::new(world, storage)?;
+fn create_mock_model(storage: &KvStorage) -> Result<Model, i32> {
+    let ms_schema = Uri::new("http://maidsafe.net/")?;
+    let subject = Node::new_from_uri_local_name(&ms_schema, "MaidSafe")?;
+    let predicate = Node::new_from_uri_local_name(&ms_schema, "location")?;
+    let model = Model::new(storage)?;
     model.add_string_literal_statement(&subject, &predicate, "Ayr", None, false)?;
     Ok(model)
 }
 
 fn main() {
-    let world = World::new();
-    let mut storage = unwrap!(KvStorage::new(&world));
+    let mut storage = unwrap!(KvStorage::new());
 
     // Convert entries into a hash
     {
         // Create mock entries and write to a file
-        let _model = unwrap!(create_mock_model(&world, &storage));
+        let _model = unwrap!(create_mock_model(&storage));
         let entry_actions = storage.entry_actions();
         println!("{:?}", entry_actions);
 
@@ -51,11 +50,11 @@ fn main() {
 
     unwrap!(storage.copy_entries(&mut entry_actions));
 
-    let model = unwrap!(Model::new(&world, &storage));
+    let model = unwrap!(Model::new(&storage));
 
     // Serialise to string - Turtle
-    let serializer = unwrap!(Serializer::new(&world, "turtle", None, None));
-    let ms_schema = unwrap!(Uri::new(&world, "http://maidsafe.net/"));
+    let serializer = unwrap!(Serializer::new("turtle", None, None));
+    let ms_schema = unwrap!(Uri::new("http://maidsafe.net/"));
     unwrap!(serializer.set_namespace(&ms_schema, "ms"));
 
     println!("{}", unwrap!(serializer.serialize_model_to_string(&model)));
