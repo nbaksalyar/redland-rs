@@ -450,40 +450,30 @@ impl Parser {
         model: &Model,
     ) -> Result<(), i32> {
         unsafe {
-            if cfg!(unix) {
-                let c_file = fdopen(
-                    file_handle.as_raw_fd(),
-                    CStr::from_bytes_with_nul_unchecked(b"r\0").as_ptr() as *const i8,
-                );
-                let res = librdf_parser_parse_file_handle_into_model(
-                    parser.as_ptr(),
-                    c_file as *mut _,
-                    0,
-                    base_uri.as_ptr(),
-                    model.as_ptr(),
-                );
 
-                if res != 0 {
-                    return Err(-1);
-                }
-            }
-            if cfg!(windows) {
-                let c_file = fdopen(
-                    file_handle.as_raw_handle(),
-                    CStr::from_bytes_with_nul_unchecked(b"r\0").as_ptr() as *const i8,
-                );
-                let res = librdf_parser_parse_file_handle_into_model(
-                    parser.as_ptr(),
-                    c_file as *mut _,
-                    0,
-                    base_uri.as_ptr(),
-                    model.as_ptr(),
-                );
+            #[cfg(unix)]
+            let c_file = fdopen(
+                file_handle.as_raw_fd(),
+                CStr::from_bytes_with_nul_unchecked(b"r\0").as_ptr() as *const i8,
+            );
+            #[cfg(windows)]
+            let c_file = fdopen(
+                file_handle.as_raw_handle(),
+                CStr::from_bytes_with_nul_unchecked(b"r\0").as_ptr() as *const i8,
+            );
 
-                if res != 0 {
-                    return Err(-1);
-                }
+            let res = librdf_parser_parse_file_handle_into_model(
+                parser.as_ptr(),
+                c_file as *mut _,
+                0,
+                base_uri.as_ptr(),
+                model.as_ptr(),
+            );
+
+            if res != 0 {
+                return Err(-1);
             }
+
             Ok(())
         }
     }
