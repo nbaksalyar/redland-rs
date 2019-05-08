@@ -17,11 +17,12 @@ extern crate unwrap;
 extern crate redland_sys;
 
 mod kv_storage;
-
 use foreign_types::{ForeignType, ForeignTypeRef};
 pub use kv_storage::{EntryAction, KvStorage};
-use libc::c_char;
+use libc::{c_char, fdopen};
 use redland_sys::*;
+use std::fs::File;
+use std::os::unix::io::AsRawFd;
 use std::sync::Mutex;
 use std::{
     ffi::{CStr, CString},
@@ -69,6 +70,11 @@ foreign_type! {
     pub type Serializer {
         type CType = librdf_serializer;
         fn drop = librdf_free_serializer;
+    }
+
+    pub type Parser {
+        type CType = librdf_parser;
+        fn drop = librdf_free_parser;
     }
 }
 
@@ -396,6 +402,90 @@ impl Node {
             return Err(-1);
         }
         Ok(unsafe { Node::from_ptr(res) })
+    }
+}
+
+impl Parser {
+    pub fn new(mime_type: &str) -> Result<Self, i32> {
+        let mime = CString::new(mime_type).map_err(|_| -1)?;
+        unsafe {
+            let parser = librdf_new_parser(
+                unwrap!(WORLD.lock()).as_ptr(),
+                ptr::null(),
+                mime.as_ptr() as *mut _,
+                ptr::null_mut(),
+            );
+            if parser.is_null() {
+                return Err(-1);
+            }
+            Ok(Parser::from_ptr(parser))
+        }
+    }
+
+    pub fn parse_string(
+        parser: Parser,
+        syntax: &str,
+        base_uri: Uri,
+        model: &Model,
+    ) -> Result<(), i32> {
+        let converted_syntax = CString::new(syntax).map_err(|_| -1)?;
+        unsafe {
+            let res = librdf_parser_parse_string_into_model(
+                parser.as_ptr(),
+                converted_syntax.as_ptr() as *mut _,
+                base_uri.as_ptr(),
+                model.as_ptr(),
+            );
+            if res > 0 {
+                return Err(-1);
+            }
+            Ok(())
+        }
+    }
+
+    pub fn parse_from_file(
+        parser: Parser,
+        file_handle: &std::fs::File,
+        base_uri: Uri,
+        model: &Model,
+    ) -> Result<(), i32> {
+        unsafe {
+            if cfg!(unix) {
+                let c_file = fdopen(
+                    file_handle.as_raw_fd(),
+                    CStr::from_bytes_with_nul_unchecked(b"r\0").as_ptr() as *const i8,
+                );
+                let res = librdf_parser_parse_file_handle_into_model(
+                    parser.as_ptr(),
+                    c_file as *mut _,
+                    0,
+                    base_uri.as_ptr(),
+                    model.as_ptr(),
+                );
+
+                if res != 0 {
+                    return Err(-1);
+                }
+            }
+            if cfg!(windows) {
+                let c_file = fdopen(
+                    file_handle.as_raw_handle(),
+                    CStr::from_bytes_with_nul_unchecked(b"r\0").as_ptr() as *const i8,
+                );
+                let res = librdf_parser_parse_file_handle_into_model(
+                    parser.as_ptr(),
+                    c_file as *mut _,
+                    0,
+                    base_uri.as_ptr(),
+                    model.as_ptr(),
+                );
+
+                if res != 0 {
+                    return Err(-1);
+                }
+            }
+            Ok(())
+        }
     }
 }
 

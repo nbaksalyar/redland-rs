@@ -2,6 +2,7 @@
 name = "redland-rs"
 version = "0.1.0"
 authors = ["MaidSafe Developers <dev@maidsafe.net>"]
+edition = "2018"
 
 [dependencies]
 foreign-types = "~0.4.0"
