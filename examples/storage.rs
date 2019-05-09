@@ -4,7 +4,6 @@ extern crate redland_rs;
 #[macro_use]
 extern crate unwrap;
 
-use libc::c_char;
 use redland_rs::{EntryAction, KvStorage, Model, Node, Serializer, Uri};
 use std::fs::File;
 use std::io::prelude::*;

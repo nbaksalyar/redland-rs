@@ -1,6 +1,22 @@
 //! Redland storage implementation based on key/value representation.
 //! Converted from C code into Rust using C2Rust.
 
+// We ignore some clippy lints because most of this code was automatically generated.
+#![allow(
+    clippy::zero_ptr,
+    clippy::toplevel_ref_arg,
+    clippy::assign_op_pattern,
+    clippy::single_match,
+    clippy::nonminimal_bool,
+    clippy::if_same_then_else,
+    clippy::cast_lossless,
+    clippy::transmute_ptr_to_ptr,
+    clippy::needless_return,
+    clippy::unreadable_literal,
+    clippy::cast_ptr_alignment,
+    dead_code
+)]
+
 use crate::*;
 use libc::c_char;
 use std::ptr;
