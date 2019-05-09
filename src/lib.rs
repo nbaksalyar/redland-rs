@@ -2,7 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(unsafe_code)]
-#![allow(unused_assignments)]
+#![allow(unused_assignments, dead_code)]
 
 #[macro_use]
 extern crate foreign_types;
@@ -21,7 +21,6 @@ use foreign_types::{ForeignType, ForeignTypeRef};
 pub use kv_storage::{EntryAction, KvStorage};
 use libc::{c_char, fdopen};
 use redland_sys::*;
-use std::fs::File;
 use std::os::unix::io::AsRawFd;
 use std::sync::Mutex;
 use std::{
@@ -59,6 +58,11 @@ foreign_type! {
         type CType = librdf_query;
         fn drop = librdf_free_query;
         fn clone = librdf_new_query_from_query;
+    }
+
+    pub type QueryResult {
+        type CType = librdf_query_results;
+        fn drop = librdf_free_query_results;
     }
 
     pub type Uri {
@@ -222,7 +226,7 @@ impl Query {
     pub fn new<S: Into<Vec<u8>>>(
         query_language: S,
         query_string: S,
-        base_uri: &Option<Uri>,
+        base_uri: Option<&Uri>,
     ) -> Result<Self, i32> {
         let c_query_string = CString::new(query_string).map_err(|_| -1)?;
         let c_query_lang = CString::new(query_language).map_err(|_| -1)?;
@@ -242,6 +246,47 @@ impl Query {
             return Err(-1);
         }
         Ok(unsafe { Query::from_ptr(res) })
+    }
+
+    pub fn execute(&self, model: &Model) -> Result<QueryResult, i32> {
+        unsafe {
+            let query_res = librdf_query_execute(self.as_ptr() as *mut _, model.as_ptr() as *mut _);
+            if query_res == ptr::null_mut() {
+                return Err(-1);
+            }
+            Ok(QueryResult::from_ptr(query_res))
+        }
+    }
+}
+
+impl QueryResult {
+    pub fn to_string(
+        &self,
+        name: &str,
+        mime_type: &str,
+        base_uri: Option<&Uri>,
+    ) -> Result<String, i32> {
+        unsafe {
+            let converted_name = CString::new(name).map_err(|_| -1)?;
+            let converted_mime = CString::new(mime_type).map_err(|_| -1)?;
+            let result = librdf_query_results_to_string2(
+                self.as_ptr() as *mut _,
+                converted_name.as_ptr() as *mut _,
+                converted_mime.as_ptr() as *mut _,
+                ptr::null_mut(),
+                base_uri.as_ref().map_or_else(ptr::null_mut, |u| u.as_ptr()),
+            );
+            if result == ptr::null_mut() {
+                return Err(-1);
+            } else {
+                let res = if let Ok(string) = CStr::from_ptr(result as *const c_char).to_str() {
+                    Some(string.to_owned())
+                } else {
+                    None
+                };
+                return res.ok_or(-1);
+            }
+        }
     }
 }
 
@@ -446,11 +491,10 @@ impl Parser {
     pub fn parse_from_file(
         parser: Parser,
         file_handle: &std::fs::File,
-        base_uri: Uri,
+        base_uri: &Uri,
         model: &Model,
     ) -> Result<(), i32> {
         unsafe {
-
             #[cfg(unix)]
             let c_file = fdopen(
                 file_handle.as_raw_fd(),
