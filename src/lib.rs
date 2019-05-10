@@ -226,7 +226,7 @@ impl Query {
     pub fn new<S: Into<Vec<u8>>>(
         query_language: S,
         query_string: S,
-        base_uri: Option<&Uri>,
+        base_uri: &Option<Uri>,
     ) -> Result<Self, i32> {
         let c_query_string = CString::new(query_string).map_err(|_| -1)?;
         let c_query_lang = CString::new(query_language).map_err(|_| -1)?;
@@ -264,7 +264,7 @@ impl QueryResult {
         &self,
         name: &str,
         mime_type: &str,
-        base_uri: Option<&Uri>,
+        base_uri: &Option<Uri>,
     ) -> Result<String, i32> {
         unsafe {
             let converted_name = CString::new(name).map_err(|_| -1)?;
