@@ -19,7 +19,7 @@ fn main() {
     //Initialize Parser
     let parser = unwrap!(Parser::new(mime_type));
     //Parsing from file
-    let _res = Parser::parse_from_file(parser, &file, base_uri, &model);
+    let _res = Parser::parse_from_file(parser, &file, &base_uri, &model);
     //Serialize parsed content in model
     let serializer = unwrap!(Serializer::new("turtle", None, None));
     unwrap!(serializer.set_namespace(&sn_schema, "sn"));
