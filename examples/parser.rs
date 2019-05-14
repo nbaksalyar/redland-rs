@@ -52,8 +52,8 @@ fn main() {
     unwrap!(serializer2.set_namespace(&sn_schema, "sn"));
     unwrap!(serializer2.set_namespace(&vcard_schema, "vcard"));
 
-    let parser = unwrap!(Parser::new(mime_type));
-    let _res = Parser::parse_string(parser, turtle_code, base_uri, &model);
+    let parser = unwrap!(Parser::new(None, Some(mime_type), None));
+    let _res = Parser::parse_string(parser, turtle_code, Some(&base_uri), &model);
 
     let result = serializer.serialize_model_to_string(&model);
     let result2 = serializer2.serialize_model_to_string(&model);

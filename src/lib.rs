@@ -226,7 +226,7 @@ impl Query {
     pub fn new<S: Into<Vec<u8>>>(
         query_language: S,
         query_string: S,
-        base_uri: &Option<Uri>,
+        base_uri: Option<&Uri>,
     ) -> Result<Self, i32> {
         let c_query_string = CString::new(query_string).map_err(|_| -1)?;
         let c_query_lang = CString::new(query_language).map_err(|_| -1)?;
@@ -237,9 +237,7 @@ impl Query {
                 c_query_lang.as_ptr(),
                 ptr::null_mut(),
                 c_query_string.as_ptr() as *const _,
-                base_uri
-                    .as_ref()
-                    .map_or_else(ptr::null_mut, ForeignType::as_ptr),
+                base_uri.map_or_else(ptr::null_mut, |uri| uri.as_ptr()),
             )
         };
         if res.is_null() {
@@ -263,18 +261,23 @@ impl QueryResult {
     pub fn to_string(
         &self,
         name: &str,
-        mime_type: &str,
-        base_uri: &Option<Uri>,
+        mime_type: Option<&str>,
+        format_uri: Option<&Uri>,
+        base_uri: Option<&Uri>,
     ) -> Result<String, i32> {
         unsafe {
             let converted_name = CString::new(name).map_err(|_| -1)?;
-            let converted_mime = CString::new(mime_type).map_err(|_| -1)?;
             let result = librdf_query_results_to_string2(
                 self.as_ptr() as *mut _,
                 converted_name.as_ptr() as *mut _,
-                converted_mime.as_ptr() as *mut _,
-                ptr::null_mut(),
-                base_uri.as_ref().map_or_else(ptr::null_mut, |u| u.as_ptr()),
+                if let Some(mime) = mime_type {
+                    let converted_mime = CString::new(mime).map_err(|_| -1)?;
+                    converted_mime.as_ptr() as *mut _
+                } else {
+                    ptr::null()
+                },
+                format_uri.map_or_else(ptr::null_mut, |uri| uri.as_ptr()),
+                base_uri.map_or_else(ptr::null_mut, |uri| uri.as_ptr()),
             );
             if result == ptr::null_mut() {
                 return Err(-1);
@@ -451,14 +454,29 @@ impl Node {
 }
 
 impl Parser {
-    pub fn new(mime_type: &str) -> Result<Self, i32> {
-        let mime = CString::new(mime_type).map_err(|_| -1)?;
+    pub fn new<S: Into<Vec<u8>>>(
+        factory_name: Option<S>,
+        mime_type: Option<S>,
+        type_uri: Option<&Uri>,
+    ) -> Result<Self, i32> {
         unsafe {
+            let c_factoryname = factory_name.map(|f| CString::new(f).map_err(|_| -1));
+            let c_mime = mime_type.map(|m| CString::new(m).map_err(|_| -1));
             let parser = librdf_new_parser(
                 unwrap!(WORLD.lock()).as_ptr(),
-                ptr::null(),
-                mime.as_ptr() as *mut _,
-                ptr::null_mut(),
+                if let Some(name) = c_factoryname {
+                    name?.as_ptr() as *mut _
+                } else {
+                    ptr::null_mut()
+                },
+                if let Some(mime) = c_mime {
+                    mime?.as_ptr() as *mut _
+                } else {
+                    ptr::null_mut()
+                },
+                type_uri
+                    .as_ref()
+                    .map_or_else(ptr::null_mut, |uri| uri.as_ptr()),
             );
             if parser.is_null() {
                 return Err(-1);
@@ -470,7 +488,7 @@ impl Parser {
     pub fn parse_string(
         parser: Parser,
         syntax: &str,
-        base_uri: Uri,
+        base_uri: Option<&Uri>,
         model: &Model,
     ) -> Result<(), i32> {
         let converted_syntax = CString::new(syntax).map_err(|_| -1)?;
@@ -478,7 +496,7 @@ impl Parser {
             let res = librdf_parser_parse_string_into_model(
                 parser.as_ptr(),
                 converted_syntax.as_ptr() as *mut _,
-                base_uri.as_ptr(),
+                base_uri.map_or_else(ptr::null_mut, |uri| uri.as_ptr()),
                 model.as_ptr(),
             );
             if res > 0 {
@@ -491,7 +509,7 @@ impl Parser {
     pub fn parse_from_file(
         parser: Parser,
         file_handle: &std::fs::File,
-        base_uri: &Uri,
+        base_uri: Option<&Uri>,
         model: &Model,
     ) -> Result<(), i32> {
         unsafe {
@@ -510,7 +528,7 @@ impl Parser {
                 parser.as_ptr(),
                 c_file as *mut _,
                 0,
-                base_uri.as_ptr(),
+                base_uri.map_or_else(ptr::null_mut, |uri| uri.as_ptr()),
                 model.as_ptr(),
             );
 

@@ -17,9 +17,9 @@ fn main() {
     let sn_schema = unwrap!(Uri::new("http://www.snee.com/hr/"));
     let vcard_schema = unwrap!(Uri::new("http://www.w3.org/2006/vcard/ns#"));
     //Initialize Parser
-    let parser = unwrap!(Parser::new(mime_type));
+    let parser = unwrap!(Parser::new(None, Some(mime_type), None));
     //Parsing from file
-    let _res = Parser::parse_from_file(parser, &file, &base_uri, &model);
+    let _res = Parser::parse_from_file(parser, &file, Some(&base_uri), &model);
     //Serialize parsed content in model
     let serializer = unwrap!(Serializer::new("turtle", None, None));
     unwrap!(serializer.set_namespace(&sn_schema, "sn"));
